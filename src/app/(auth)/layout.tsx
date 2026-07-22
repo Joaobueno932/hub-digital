@@ -7,14 +7,22 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-primary-dark">
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-primary-dark via-primary to-[#3f5a23]">
+      <Image
+        src="/images/network-pattern.webp"
+        alt=""
+        width={900}
+        height={862}
+        aria-hidden
+        className="pointer-events-none absolute -right-40 -top-32 -z-10 opacity-25"
+      />
       <header className="mx-auto w-full max-w-md px-4 pt-10">
         <Link href="/" aria-label="Voltar para a página inicial">
           <Image
             src="/brand/logo-horizontal-white.png"
             alt="Hub Digital"
             width={180}
-            height={48}
+            height={50}
             priority
           />
         </Link>

@@ -34,9 +34,10 @@ Caminhos oficiais em `public/assets.json` (não renomear — PNGs provisórios s
 - Logos: `/brand/logo-horizontal-{white,dark}.png`, `/brand/logo-stacked-{white,dark}.png`
 - Símbolo: `/brand/symbol-{white,dark}.png`; wordmark: `/brand/wordmark-{white,dark}.png`
 - Padrões gráficos: `/brand/pattern-secondary.png`, `/brand/pattern-white.png`
-- Imagens: `/images/hero-background.webp`, `/images/acceleration-visual.webp`, `/images/footer-background.webp`
+- Imagens oficiais em alta (2026-07-22): `/images/hero-team.webp` (hero com gradiente navy→lima e foto duotone integrada), `/images/acceleration-woman.webp` (foto recortada da seção Serviços), `/images/network-pattern.webp` (padrão de rede em traço branco, uso decorativo com opacidade baixa)
+- Imagens legadas ainda disponíveis: `/images/hero-background.webp`, `/images/acceleration-visual.webp`, `/images/footer-background.webp`
 - Favicons/webmanifest em `/brand/*` e raiz; OG: `/og-image.png`
-- Referências (não usar em produção): `/references/figma/*`
+- Referências (não usar em produção): `/references/figma/*` — inclui `/references/figma/landing-model.png`, o **modelo oficial da landing page** que a home pública segue fielmente (header navy com menu em caixa alta + LOGIN laranja; hero com selo circular do símbolo, título grande e CTA laranja em caixa alta; divisores finos com pontos nas extremidades; seção clara com eyebrow laranja "Serviços" e cards flutuantes sobre a foto; rodapé com gradiente lima→navy, logo empilhada, colunas de links e newsletter)
 
 Regras: não gerar logos artificiais; usar logo claro sobre `primary-dark` e escuro sobre fundos claros.
 

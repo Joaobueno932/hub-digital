@@ -87,7 +87,7 @@ function NavLinks({
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm ${
                       active
-                        ? "border-l-2 border-accent bg-white/10 font-semibold text-white"
+                        ? "border-l-2 border-secondary bg-white/10 font-semibold text-white"
                         : "text-white/75 hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -106,14 +106,14 @@ function NavLinks({
 
 export function AppSidebar({ groups }: { groups: NavGroupData[] }) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col bg-primary-dark lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-primary-dark via-primary-dark to-primary lg:flex">
       <div className="px-5 py-5">
         <Link href="/app" aria-label="Visão geral">
           <Image
             src="/brand/logo-horizontal-white.png"
             alt="Hub Digital"
             width={150}
-            height={40}
+            height={41}
           />
         </Link>
       </div>
@@ -146,14 +146,14 @@ export function MobileNav({ groups }: { groups: NavGroupData[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Menu de navegação"
-            className="relative flex w-72 max-w-[85vw] flex-col bg-primary-dark"
+            className="relative flex w-72 max-w-[85vw] flex-col bg-gradient-to-b from-primary-dark via-primary-dark to-primary"
           >
             <div className="flex items-center justify-between px-4 py-4">
               <Image
                 src="/brand/logo-horizontal-white.png"
                 alt="Hub Digital"
                 width={130}
-                height={34}
+                height={36}
               />
               <button
                 type="button"

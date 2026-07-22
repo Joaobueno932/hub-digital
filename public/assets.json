@@ -12,16 +12,18 @@
     "patternWhite": "/brand/pattern-white.png"
   },
   "images": {
-    "heroBackground": "/images/hero-background.webp",
-    "accelerationVisual": "/images/acceleration-visual.webp",
+    "heroBackground": "/images/hero-team.webp",
+    "accelerationVisual": "/images/acceleration-woman.webp",
     "footerBackground": "/images/footer-background.webp",
-    "openGraph": "/og-image.png"
+    "openGraph": "/og-image.png",
+    "networkPattern": "/images/network-pattern.webp"
   },
   "references": {
     "prototype": "/references/figma/prototype-board.png",
     "brandBoard": "/references/figma/brand-board.png",
     "landingVariantA": "/references/figma/landing-variant-a.png",
-    "landingVariantB": "/references/figma/landing-variant-b.png"
+    "landingVariantB": "/references/figma/landing-variant-b.png",
+    "landingModel": "/references/figma/landing-model.png"
   },
   "colors": {
     "accent": "#E85D04",
