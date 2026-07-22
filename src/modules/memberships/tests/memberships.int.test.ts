@@ -279,5 +279,16 @@ describe("suspensão, reativação e remoção", () => {
       }),
     ]);
     expect(results.filter((r) => r.status === "fulfilled").length).toBe(1);
+
+    // O conflito de corrida do perdedor deve ficar auditado — antes da
+    // correção, o registro era criado dentro da transação e desaparecia no
+    // rollback ao lançar o erro.
+    const conflictAudits = await prisma.auditLog.count({
+      where: {
+        entityId: tempMembership.id,
+        action: "membership.processing_conflict",
+      },
+    });
+    expect(conflictAudits).toBe(1);
   });
 });

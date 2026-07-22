@@ -28,13 +28,45 @@ export async function updateOrganization(input: {
   });
   if (!before) throw new OrganizationNotFoundError();
 
-  return prisma.$transaction(async (tx) => {
-    const claimed = await tx.organization.updateMany({
-      where: { id: input.organizationId, updatedAt: input.expectedUpdatedAt },
-      data: input.data,
-    });
-    if (claimed.count === 0) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const claimed = await tx.organization.updateMany({
+        where: { id: input.organizationId, updatedAt: input.expectedUpdatedAt },
+        data: input.data,
+      });
+      // Conflito de OCC: auditado no catch (fora da transação revertida).
+      if (claimed.count === 0) throw new OrganizationConflictError();
+
+      const after = await tx.organization.findUniqueOrThrow({
+        where: { id: input.organizationId },
+      });
+
       await tx.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          organizationId: input.organizationId,
+          action: "organization.updated",
+          entityType: "organization",
+          entityId: input.organizationId,
+          metadata: {
+            before: {
+              name: before.name,
+              displayName: before.displayName,
+              description: before.description,
+              website: before.website,
+              city: before.city,
+              state: before.state,
+            },
+            after: input.data,
+          },
+        },
+      });
+
+      return after;
+    });
+  } catch (error) {
+    if (error instanceof OrganizationConflictError) {
+      await prisma.auditLog.create({
         data: {
           actorId: input.actorId,
           organizationId: input.organizationId,
@@ -44,34 +76,7 @@ export async function updateOrganization(input: {
           metadata: { attempted: "update" },
         },
       });
-      throw new OrganizationConflictError();
     }
-
-    const after = await tx.organization.findUniqueOrThrow({
-      where: { id: input.organizationId },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        actorId: input.actorId,
-        organizationId: input.organizationId,
-        action: "organization.updated",
-        entityType: "organization",
-        entityId: input.organizationId,
-        metadata: {
-          before: {
-            name: before.name,
-            displayName: before.displayName,
-            description: before.description,
-            website: before.website,
-            city: before.city,
-            state: before.state,
-          },
-          after: input.data,
-        },
-      },
-    });
-
-    return after;
-  });
+    throw error;
+  }
 }

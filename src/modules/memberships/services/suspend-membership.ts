@@ -21,25 +21,53 @@ export async function suspendMembership(input: {
   });
   if (!membership) throw new MembershipNotFoundError();
 
-  return prisma.$transaction(async (tx) => {
-    const adminRole = adminRoleForOrgType(membership.organization.type.code);
-    const isAdmin = adminRole
-      ? membership.roles.some((r) => r.role.code === adminRole)
-      : false;
-    if (isAdmin) {
-      await assertNotLastActiveAdmin(
-        tx,
-        membership.organizationId,
-        membership.id,
-      );
-    }
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const adminRole = adminRoleForOrgType(membership.organization.type.code);
+      const isAdmin = adminRole
+        ? membership.roles.some((r) => r.role.code === adminRole)
+        : false;
+      if (isAdmin) {
+        await assertNotLastActiveAdmin(
+          tx,
+          membership.organizationId,
+          membership.id,
+        );
+      }
 
-    const claimed = await tx.membership.updateMany({
-      where: { id: membership.id, status: "ACTIVE" },
-      data: { status: "SUSPENDED" },
-    });
-    if (claimed.count === 0) {
+      const claimed = await tx.membership.updateMany({
+        where: { id: membership.id, status: "ACTIVE" },
+        data: { status: "SUSPENDED" },
+      });
+      // Conflito de corrida: auditado no catch (fora da transação revertida).
+      if (claimed.count === 0) throw new MembershipConflictError();
+
       await tx.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          organizationId: membership.organizationId,
+          action: "membership.suspended",
+          entityType: "membership",
+          entityId: membership.id,
+          metadata: { previousStatus: "ACTIVE" },
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: membership.userId,
+          type: "membership.suspended",
+          title: "Vínculo suspenso",
+          body: `Seu vínculo com ${membership.organization.name} foi suspenso.`,
+          link: "/app",
+        },
+      });
+
+      return tx.membership.findUniqueOrThrow({ where: { id: membership.id } });
+    });
+  } catch (error) {
+    if (error instanceof MembershipConflictError) {
+      await prisma.auditLog.create({
         data: {
           actorId: input.actorId,
           organizationId: membership.organizationId,
@@ -49,30 +77,7 @@ export async function suspendMembership(input: {
           metadata: { attempted: "suspend" },
         },
       });
-      throw new MembershipConflictError();
     }
-
-    await tx.auditLog.create({
-      data: {
-        actorId: input.actorId,
-        organizationId: membership.organizationId,
-        action: "membership.suspended",
-        entityType: "membership",
-        entityId: membership.id,
-        metadata: { previousStatus: "ACTIVE" },
-      },
-    });
-
-    await tx.notification.create({
-      data: {
-        userId: membership.userId,
-        type: "membership.suspended",
-        title: "Vínculo suspenso",
-        body: `Seu vínculo com ${membership.organization.name} foi suspenso.`,
-        link: "/app",
-      },
-    });
-
-    return tx.membership.findUniqueOrThrow({ where: { id: membership.id } });
-  });
+    throw error;
+  }
 }

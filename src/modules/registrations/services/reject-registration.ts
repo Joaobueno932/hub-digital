@@ -37,20 +37,64 @@ export async function rejectRegistrationRequest(input: {
     throw new SelfReviewError();
   }
 
+  // Conflito detectado ANTES da transação (solicitação já processada): é o
+  // caso comum de clicar em já-decidida, não auditado — mantém o comportamento
+  // existente e fica fora do try, logo não cai no catch abaixo.
   if (request.status !== "PENDING") throw new RegistrationConflictError();
 
-  return prisma.$transaction(async (tx) => {
-    const claimed = await tx.registrationRequest.updateMany({
-      where: { id: request.id, status: "PENDING" },
-      data: {
-        status: "REJECTED",
-        decidedById: input.actorId,
-        decidedAt: new Date(),
-        decisionReason: reason,
-      },
-    });
-    if (claimed.count === 0) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const claimed = await tx.registrationRequest.updateMany({
+        where: { id: request.id, status: "PENDING" },
+        data: {
+          status: "REJECTED",
+          decidedById: input.actorId,
+          decidedAt: new Date(),
+          decisionReason: reason,
+        },
+      });
+      // Conflito de corrida (outra requisição venceu entre a checagem e o
+      // updateMany). A auditoria NÃO é gravada aqui: qualquer escrita dentro
+      // da transação é revertida quando lançamos o erro. Vai no catch, fora
+      // da transação.
+      if (claimed.count === 0) throw new RegistrationConflictError();
+
+      if (request.requesterId) {
+        await tx.notification.create({
+          data: {
+            userId: request.requesterId,
+            type: "registration.rejected",
+            title: "Cadastro não aprovado",
+            body: `Sua solicitação não foi aprovada. Justificativa: ${reason}`,
+            link: "/app",
+          },
+        });
+      }
+
       await tx.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          organizationId: input.actorOrganizationId,
+          action: "registration_request.rejected",
+          entityType: "registration_request",
+          entityId: request.id,
+          metadata: {
+            previousStatus: "PENDING",
+            newStatus: "REJECTED",
+            type: request.type,
+          },
+        },
+      });
+
+      return { requestId: request.id };
+    });
+  } catch (error) {
+    // Só o conflito de corrida (lançado de dentro da transação) chega aqui —
+    // o pré-check acima lança antes do try. O registro é feito fora da
+    // transação revertida, sem duplicar (a segunda chamada sequencial cai no
+    // pré-check e não audita).
+    if (error instanceof RegistrationConflictError) {
+      await prisma.auditLog.create({
         data: {
           actorId: input.actorId,
           organizationId: input.actorOrganizationId,
@@ -60,36 +104,7 @@ export async function rejectRegistrationRequest(input: {
           metadata: { attempted: "reject" },
         },
       });
-      throw new RegistrationConflictError();
     }
-
-    if (request.requesterId) {
-      await tx.notification.create({
-        data: {
-          userId: request.requesterId,
-          type: "registration.rejected",
-          title: "Cadastro não aprovado",
-          body: `Sua solicitação não foi aprovada. Justificativa: ${reason}`,
-          link: "/app",
-        },
-      });
-    }
-
-    await tx.auditLog.create({
-      data: {
-        actorId: input.actorId,
-        organizationId: input.actorOrganizationId,
-        action: "registration_request.rejected",
-        entityType: "registration_request",
-        entityId: request.id,
-        metadata: {
-          previousStatus: "PENDING",
-          newStatus: "REJECTED",
-          type: request.type,
-        },
-      },
-    });
-
-    return { requestId: request.id };
-  });
+    throw error;
+  }
 }

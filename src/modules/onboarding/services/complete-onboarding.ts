@@ -28,18 +28,52 @@ export async function completeOnboarding(input: {
     throw new OnboardingCompletionConflictError();
   }
 
-  return prisma.$transaction(async (tx) => {
-    const claimed = await tx.onboardingProfile.updateMany({
-      where: { userId: input.userId, status: "DRAFT" },
-      data: {
-        status: "COMPLETED",
-        completedAt: new Date(),
-        version: { increment: 1 },
-      },
-    });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const claimed = await tx.onboardingProfile.updateMany({
+        where: { userId: input.userId, status: "DRAFT" },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+          version: { increment: 1 },
+        },
+      });
 
-    if (claimed.count === 0) {
+      // Conflito de corrida: auditado no catch (fora da transação revertida).
+      if (claimed.count === 0) throw new OnboardingCompletionConflictError();
+
+      await tx.notification.create({
+        data: {
+          userId: input.userId,
+          type: "onboarding.completed",
+          title: "Perfil inicial concluído",
+          body: "Seu estágio no Hub Digital foi registrado com sucesso.",
+          link: "/app/onboarding/concluido",
+        },
+      });
+
       await tx.auditLog.create({
+        data: {
+          actorId: input.userId,
+          action: "onboarding.completed",
+          entityType: "onboarding_profile",
+          entityId: input.userId,
+          metadata: {
+            selectedStage: profile.selectedStage,
+            previousStatus: "DRAFT",
+            newStatus: "COMPLETED",
+            version: profile.version + 1,
+          },
+        },
+      });
+
+      return { status: "COMPLETED" };
+    });
+  } catch (error) {
+    // Só o conflito de corrida (lançado de dentro da transação) chega aqui —
+    // o pré-check de já-COMPLETED lança antes do try.
+    if (error instanceof OnboardingCompletionConflictError) {
+      await prisma.auditLog.create({
         data: {
           actorId: input.userId,
           action: "onboarding.completion_conflict",
@@ -48,34 +82,7 @@ export async function completeOnboarding(input: {
           metadata: { reason: "already_processed" },
         },
       });
-      throw new OnboardingCompletionConflictError();
     }
-
-    await tx.notification.create({
-      data: {
-        userId: input.userId,
-        type: "onboarding.completed",
-        title: "Perfil inicial concluído",
-        body: "Seu estágio no Hub Digital foi registrado com sucesso.",
-        link: "/app/onboarding/concluido",
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        actorId: input.userId,
-        action: "onboarding.completed",
-        entityType: "onboarding_profile",
-        entityId: input.userId,
-        metadata: {
-          selectedStage: profile.selectedStage,
-          previousStatus: "DRAFT",
-          newStatus: "COMPLETED",
-          version: profile.version + 1,
-        },
-      },
-    });
-
-    return { status: "COMPLETED" };
-  });
+    throw error;
+  }
 }

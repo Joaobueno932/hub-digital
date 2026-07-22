@@ -360,6 +360,17 @@ describe("estados, idempotência e concorrência", () => {
       },
     });
     expect(membershipCount).toBe(1);
+
+    // A auditoria do conflito de corrida deve PERSISTIR: o perdedor grava
+    // `processing_conflict` fora da transação revertida (antes da correção,
+    // o registro era gravado dentro da transação e desaparecia no rollback).
+    const conflictAudits = await prisma.auditLog.count({
+      where: {
+        entityId: request.id,
+        action: "registration_request.processing_conflict",
+      },
+    });
+    expect(conflictAudits).toBe(1);
   });
 
   it("reprovações concorrentes: apenas uma processa", async () => {
@@ -383,6 +394,54 @@ describe("estados, idempotência e concorrência", () => {
       where: { entityId: request.id, action: "registration_request.rejected" },
     });
     expect(audits).toBe(1);
+
+    // O conflito de corrida na reprovação também deve ficar registrado.
+    const conflictAudits = await prisma.auditLog.count({
+      where: {
+        entityId: request.id,
+        action: "registration_request.processing_conflict",
+      },
+    });
+    expect(conflictAudits).toBe(1);
+  });
+
+  it("conflito sequencial (já processada) não gera auditoria de processing_conflict", async () => {
+    // Comportamento preservado: aprovar de novo uma solicitação já decidida
+    // cai no pré-check (antes da transação) e lança conflito SEM auditar —
+    // não é uma corrida, é clique em algo já processado.
+    const request = await createRequest();
+    await approveRegistrationRequest({
+      requestId: request.id,
+      actorId: admHubId,
+      actorOrganizationId: null,
+    });
+
+    await expect(
+      approveRegistrationRequest({
+        requestId: request.id,
+        actorId: admHubId,
+        actorOrganizationId: null,
+      }),
+    ).rejects.toBeInstanceOf(RegistrationConflictError);
+
+    const conflictAudits = await prisma.auditLog.count({
+      where: {
+        entityId: request.id,
+        action: "registration_request.processing_conflict",
+      },
+    });
+    expect(conflictAudits).toBe(0);
+
+    // A operação bloqueada não alterou os dados de negócio: continua uma única
+    // organização/vínculo resultantes da primeira aprovação.
+    const updated = await prisma.registrationRequest.findUniqueOrThrow({
+      where: { id: request.id },
+    });
+    expect(updated.status).toBe("APPROVED");
+    const orgs = await prisma.organization.count({
+      where: { id: updated.resultingOrganizationId ?? undefined },
+    });
+    expect(orgs).toBe(1);
   });
 });
 
