@@ -1,0 +1,400 @@
+// Modelo de dados da Fase 1 — ver docs/modelo-dados.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Autenticação (compatível com Auth.js) ----------
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String
+  email         String     @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  image         String?
+  status        UserStatus @default(PENDING)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  accounts             Account[]
+  sessions             Session[]
+  memberships          Membership[]
+  onboarding           OnboardingProfile?
+  notifications        Notification[]
+  registrationRequests RegistrationRequest[] @relation("Requester")
+  decidedRequests      RegistrationRequest[] @relation("Decider")
+  auditLogs            AuditLog[]
+  files                FileAsset[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------- Organizações ----------
+
+enum OrganizationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+model OrganizationType {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique // HUB, ESPACO_INOVACAO, STARTUP, EMPRESA, MANTENEDOR, PARCEIRO
+  name String
+
+  organizations Organization[]
+
+  @@map("organization_types")
+}
+
+model Organization {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String             @unique
+  typeId      String             @db.Uuid
+  description String?
+  status      OrganizationStatus @default(PENDING)
+  createdById String?            @db.Uuid
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+
+  type                 OrganizationType      @relation(fields: [typeId], references: [id])
+  memberships          Membership[]
+  featureFlags         FeatureFlag[]
+  auditLogs            AuditLog[]
+  files                FileAsset[]
+  registrationRequests RegistrationRequest[]
+
+  @@index([typeId, status])
+  @@map("organizations")
+}
+
+// ---------- Vínculos e RBAC ----------
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  ENDED
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  status         MembershipStatus @default(ACTIVE)
+  createdById    String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  user         User             @relation(fields: [userId], references: [id])
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  roles        MembershipRole[]
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
+  @@map("memberships")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique
+  name        String
+  description String?
+  isSystem    Boolean @default(false)
+
+  permissions RolePermission[]
+  memberships MembershipRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // formato dominio.acao (ex.: users.list)
+  description String?
+  module      String
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MembershipRole {
+  membershipId String   @db.Uuid
+  roleId       String   @db.Uuid
+  assignedById String?  @db.Uuid
+  createdAt    DateTime @default(now())
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id])
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+// ---------- Solicitações de cadastro (nunca apagadas fisicamente) ----------
+
+enum RegistrationType {
+  USER
+  STARTUP
+  ESPACO_INOVACAO
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESUBMITTED
+}
+
+model RegistrationRequest {
+  id                      String             @id @default(uuid()) @db.Uuid
+  type                    RegistrationType
+  requesterId             String?            @db.Uuid
+  payload                 Json
+  status                  RegistrationStatus @default(PENDING)
+  decidedById             String?            @db.Uuid
+  decidedAt               DateTime?
+  decisionReason          String?
+  resultingOrganizationId String?            @db.Uuid
+  resultingMembershipId   String?            @db.Uuid
+  previousRequestId       String?            @unique @db.Uuid
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  requester             User?                @relation("Requester", fields: [requesterId], references: [id])
+  decidedBy             User?                @relation("Decider", fields: [decidedById], references: [id])
+  resultingOrganization Organization?        @relation(fields: [resultingOrganizationId], references: [id])
+  previousRequest       RegistrationRequest? @relation("Resubmission", fields: [previousRequestId], references: [id])
+  resubmission          RegistrationRequest? @relation("Resubmission")
+
+  @@index([status, type])
+  @@index([requesterId])
+  @@map("registration_requests")
+}
+
+// ---------- Onboarding ----------
+
+enum OnboardingStage {
+  WANT_TO_START
+  HAVE_IDEA
+  HAVE_IDEA_AND_TEAM
+  HAVE_TEAM_AND_SOLUTION
+  HAVE_STARTUP_OR_COMPANY
+}
+
+// NOT_STARTED é representado pela ausência de registro (sem linha na tabela).
+enum OnboardingStatus {
+  DRAFT
+  COMPLETED
+}
+
+model OnboardingProfile {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @unique @db.Uuid
+  status        OnboardingStatus @default(DRAFT)
+  selectedStage OnboardingStage?
+  version       Int              @default(0) // controle otimista de concorrência
+  startedAt     DateTime         @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_profiles")
+}
+
+// ---------- Planos ----------
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+  UNDEFINED
+}
+
+enum PlanScope {
+  GENERAL
+  COWORKING
+  PROJECTS
+}
+
+model Plan {
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String        @unique
+  description   String?
+  priceCents    Int?
+  billingPeriod BillingPeriod @default(UNDEFINED)
+  scope         PlanScope     @default(GENERAL)
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  @@map("plans")
+}
+
+// ---------- Módulos e feature flags ----------
+
+model Module {
+  id    String @id @default(uuid()) @db.Uuid
+  code  String @unique // portal, coworking, events, ideation, projects, trends, academy
+  name  String
+  order Int    @default(0)
+
+  @@map("modules")
+}
+
+model FeatureFlag {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String
+  enabled        Boolean  @default(false)
+  organizationId String?  @db.Uuid
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([key, organizationId])
+  @@map("feature_flags")
+}
+
+// ---------- Notificações ----------
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ---------- Auditoria (somente inserção) ----------
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  actorId        String?  @db.Uuid
+  organizationId String?  @db.Uuid
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  actor        User?         @relation(fields: [actorId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------- Arquivos ----------
+
+enum FileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model FileAsset {
+  id             String         @id @default(uuid()) @db.Uuid
+  storageKey     String         @unique
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  visibility     FileVisibility @default(PRIVATE)
+  ownerId        String?        @db.Uuid
+  organizationId String?        @db.Uuid
+  createdAt      DateTime       @default(now())
+  deletedAt      DateTime?
+
+  owner        User?         @relation(fields: [ownerId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("file_assets")
+}
