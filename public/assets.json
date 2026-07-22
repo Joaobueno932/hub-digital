@@ -1,0 +1,33 @@
+{
+  "brand": {
+    "logoHorizontalWhite": "/brand/logo-horizontal-white.png",
+    "logoHorizontalDark": "/brand/logo-horizontal-dark.png",
+    "logoStackedWhite": "/brand/logo-stacked-white.png",
+    "logoStackedDark": "/brand/logo-stacked-dark.png",
+    "symbolWhite": "/brand/symbol-white.png",
+    "symbolDark": "/brand/symbol-dark.png",
+    "wordmarkWhite": "/brand/wordmark-white.png",
+    "wordmarkDark": "/brand/wordmark-dark.png",
+    "patternSecondary": "/brand/pattern-secondary.png",
+    "patternWhite": "/brand/pattern-white.png"
+  },
+  "images": {
+    "heroBackground": "/images/hero-background.webp",
+    "accelerationVisual": "/images/acceleration-visual.webp",
+    "footerBackground": "/images/footer-background.webp",
+    "openGraph": "/og-image.png"
+  },
+  "references": {
+    "prototype": "/references/figma/prototype-board.png",
+    "brandBoard": "/references/figma/brand-board.png",
+    "landingVariantA": "/references/figma/landing-variant-a.png",
+    "landingVariantB": "/references/figma/landing-variant-b.png"
+  },
+  "colors": {
+    "accent": "#E85D04",
+    "background": "#EAEAEA",
+    "secondary": "#BCCE2D",
+    "primary": "#182F4F",
+    "dark": "#0C1B2A"
+  }
+}
