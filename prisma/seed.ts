@@ -149,13 +149,12 @@ const COMMON = [
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   SUPER_ADMIN: ALL,
   ADM_HUB: ALL.filter((c) => c !== "organizations.update.own"),
+  // Administração de PESSOAS do espaço acontece em /app/membros via
+  // `members.manage` (escopada ao vínculo). As permissões `users.*` são de
+  // administração da PLATAFORMA (global) e por isso não pertencem a papéis
+  // organizacionais — ver docs/matriz-permissoes.md.
   ADM_ESPACO_INOVACAO: [
     ...COMMON,
-    "users.list",
-    "users.view",
-    "users.create",
-    "users.update",
-    "users.deactivate",
     "organizations.update.own",
     "members.manage",
     "invitations.manage",
@@ -163,7 +162,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   USUARIO_ESPACO_INOVACAO: [...COMMON],
   ADM_STARTUP: [
     ...COMMON,
-    "users.view",
     "organizations.update.own",
     "members.manage",
     "invitations.manage",
@@ -264,6 +262,15 @@ async function main() {
         create: { roleId: role.id, permissionId: perm.id },
       });
     }
+    // ROLE_PERMISSIONS é a fonte de verdade: revoga o que saiu do mapa. Sem
+    // isso, uma permissão removida (ex.: `users.*` de papéis organizacionais)
+    // continuaria concedida em bancos já semeados.
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: role.id,
+        permissionId: { notIn: perms.map((p) => p.id) },
+      },
+    });
   }
 
   const typeByCode = Object.fromEntries(

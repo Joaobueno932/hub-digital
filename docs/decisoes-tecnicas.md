@@ -72,6 +72,14 @@ Este documento registra decisões técnicas confirmadas ou propostas para o dese
 11. **Concorrência/idempotência**: todos os serviços de mutação (organização, vínculo, convite) seguem o mesmo padrão de `approveRegistrationRequest` (Etapa 1.5): `updateMany` condicionado ao estado esperado dentro de `prisma.$transaction`, com auditoria de conflito (`*.processing_conflict`) quando a corrida é perdida. Edição de organização usa OCC via `updatedAt` (equivalente ao `status: PENDING` do fluxo de registro).
 12. **Último administrador**: `assertNotLastActiveAdmin` (guarda de domínio, não de interface) bloqueia rebaixar/suspender/remover o único vínculo ativo com o papel administrador do tipo de organização — inclusive quando o próprio ator tenta agir sobre si mesmo.
 
+## Correção de segurança — escopo global da administração (2026-07-22)
+
+1. **Vazamento cross-tenant corrigido**: `users.*` concedidas a papéis organizacionais (`ADM_ESPACO_INOVACAO`, e `users.view` a `ADM_STARTUP`) permitiam abrir `/app/admin/usuarios` e ver **todos os usuários da plataforma** — a organização deles não é do tipo HUB, então a permissão não era global, mas `requirePermission` valida contra a organização ativa e a listagem não recortava por organização. Duas camadas de correção (defesa em profundidade): as permissões saíram dos papéis organizacionais **e** as telas passaram a exigir escopo global.
+2. **`requireGlobalPermission`/`requireAnyGlobalPermission`** (`src/lib/authz.ts`) aceitam apenas `access.superAdmin` ou `access.global` (vínculo em organização HUB), ignorando deliberadamente a permissão da organização ativa. Aplicadas em todo `/app/admin` — inclusive nas actions de decisão de cadastro, que também são de plataforma.
+3. **Seed passou a revogar**: `ROLE_PERMISSIONS` virou fonte de verdade — depois de conceder, o seed apaga os `rolePermission` fora do mapa. Antes ele só concedia, então remover uma permissão do código não surtia efeito em bancos já semeados (a correção não teria chegado ao ambiente de desenvolvimento).
+4. **Menu alinhado ao guard**: `requiresGlobalScope` em `src/config/navigation.ts` + `globalPermissionCodes` em `NavContext` fazem o item "Administração" sumir para quem não tem escopo global — evitando exibir um card que levaria a "acesso negado".
+5. **Nenhuma capacidade real foi perdida**: administração das pessoas da própria organização continua em `/app/membros` via `members.manage` (Etapa 1.8), que já é escopada ao vínculo.
+
 ## Status das decisões
 
 As decisões deste documento são iniciais e deverão ser revisadas após a auditoria completa dos requisitos e protótipos.

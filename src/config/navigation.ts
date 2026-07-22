@@ -21,6 +21,13 @@ export type NavItem = {
   featureFlag?: string;
   /** Usuário precisa de QUALQUER uma destas permissões (vazio = só autenticação). */
   anyPermission?: string[];
+  /**
+   * Exige que `anyPermission` seja satisfeita em **escopo global** (SUPER_ADMIN
+   * ou vínculo em organização HUB). Use em telas que operam sobre todas as
+   * organizações — ter a permissão dentro da própria organização não basta.
+   * Espelha `requireGlobalPermission` em `src/lib/authz.ts`.
+   */
+  requiresGlobalScope?: boolean;
   /** Restringe a tipos de organização ativa (códigos de OrganizationType). */
   organizationTypes?: string[];
   /** Exige organização ativa (default: false). */
@@ -158,6 +165,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "ShieldCheck",
     href: "/app/admin",
     group: "administracao",
+    requiresGlobalScope: true,
     anyPermission: [
       "users.list",
       "organizations.list",

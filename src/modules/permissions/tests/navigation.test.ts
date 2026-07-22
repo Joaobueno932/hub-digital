@@ -11,6 +11,7 @@ function ctx(overrides: Partial<NavContext> = {}): NavContext {
     isAuthenticated: true,
     superAdmin: false,
     permissionCodes: new Set(),
+    globalPermissionCodes: new Set(),
     activeOrganizationType: null,
     hasActiveOrganization: false,
     enabledFlags: new Set(),
@@ -91,17 +92,21 @@ describe("filterNavigation", () => {
   });
 
   it("menus diferem entre ADM_HUB e ADM_STARTUP", () => {
+    // ADM_HUB tem vínculo em organização HUB, então as permissões dele são de
+    // escopo global (globalPermissionCodes).
+    const admHubCodes = new Set([
+      "users.list",
+      "registrations.list",
+      "members.manage",
+      "plans.view",
+    ]);
     const admHub = filterNavigation(
       NAV_ITEMS,
       ctx({
         hasActiveOrganization: true,
         activeOrganizationType: "HUB",
-        permissionCodes: new Set([
-          "users.list",
-          "registrations.list",
-          "members.manage",
-          "plans.view",
-        ]),
+        permissionCodes: admHubCodes,
+        globalPermissionCodes: admHubCodes,
       }),
     );
     const admStartup = filterNavigation(
@@ -115,6 +120,23 @@ describe("filterNavigation", () => {
     expect(admHub.map((i) => i.href)).toContain("/app/admin");
     expect(admStartup.map((i) => i.href)).not.toContain("/app/admin");
     expect(admStartup.map((i) => i.href)).toContain("/app/membros");
+  });
+
+  it("permissão de administração concedida apenas dentro da organização não revela /app/admin", () => {
+    // Regressão: ADM_ESPACO_INOVACAO tinha `users.list` no escopo do próprio
+    // espaço e, por isso, enxergava a administração da plataforma.
+    const items = filterNavigation(
+      NAV_ITEMS,
+      ctx({
+        hasActiveOrganization: true,
+        activeOrganizationType: "ESPACO_INOVACAO",
+        permissionCodes: new Set(["users.list", "members.manage"]),
+        globalPermissionCodes: new Set(), // nada em escopo global
+      }),
+    );
+    const hrefs = items.map((i) => i.href);
+    expect(hrefs).not.toContain("/app/admin");
+    expect(hrefs).toContain("/app/membros"); // a área correta continua visível
   });
 
   it("SUPER_ADMIN vê itens de administração sem depender de flags de permissão", () => {

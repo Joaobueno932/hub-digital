@@ -110,6 +110,34 @@ export async function hasAllPermissions(codes: string[]): Promise<boolean> {
 }
 
 /**
+ * Verdadeiro apenas para permissões de **escopo global** — SUPER_ADMIN ou
+ * papéis de vínculo em organização do tipo HUB (ex.: ADM_HUB).
+ *
+ * Diferente de `permissionInContext`, ignora deliberadamente a permissão vinda
+ * da *organização ativa*: um administrador de espaço/startup pode ter
+ * `users.list` no escopo dele sem por isso administrar a plataforma inteira.
+ * Ver docs/matriz-permissoes.md (usuários da plataforma × membros da
+ * organização).
+ */
+function globalPermissionInContext(ctx: SessionContext, code: string): boolean {
+  return ctx.access.superAdmin || ctx.access.global.has(code);
+}
+
+export async function hasGlobalPermission(code: string): Promise<boolean> {
+  const ctx = await getSessionContext();
+  if (!ctx) return false;
+  return globalPermissionInContext(ctx, code);
+}
+
+export async function hasAnyGlobalPermission(
+  codes: string[],
+): Promise<boolean> {
+  const ctx = await getSessionContext();
+  if (!ctx) return false;
+  return codes.some((code) => globalPermissionInContext(ctx, code));
+}
+
+/**
  * Exige a permissão no escopo da organização ativa (ou escopo global).
  * Redireciona para acesso negado sem revelar dados da entidade.
  */
@@ -124,6 +152,32 @@ export async function requireAnyPermission(
 ): Promise<SessionContext> {
   const ctx = await requireSessionContext();
   if (!codes.some((code) => permissionInContext(ctx, code)))
+    redirect("/app/acesso-negado");
+  return ctx;
+}
+
+/**
+ * Exige a permissão em **escopo global** (plataforma inteira).
+ *
+ * Use nas telas que operam sobre dados de todas as organizações — como a
+ * administração de usuários da plataforma. `requirePermission` não serve
+ * nesses casos: ele aceitaria a permissão concedida dentro de uma organização
+ * qualquer, permitindo que um administrador de espaço/startup enxergasse
+ * pessoas de outras organizações.
+ */
+export async function requireGlobalPermission(
+  code: string,
+): Promise<SessionContext> {
+  const ctx = await requireSessionContext();
+  if (!globalPermissionInContext(ctx, code)) redirect("/app/acesso-negado");
+  return ctx;
+}
+
+export async function requireAnyGlobalPermission(
+  codes: string[],
+): Promise<SessionContext> {
+  const ctx = await requireSessionContext();
+  if (!codes.some((code) => globalPermissionInContext(ctx, code)))
     redirect("/app/acesso-negado");
   return ctx;
 }

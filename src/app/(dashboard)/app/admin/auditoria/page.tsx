@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Auditoria" };
 
 export default async function AdminAuditoriaPage() {
-  await requirePermission("audit.view");
+  await requireGlobalPermission("audit.view");
 
   const logs = await prisma.auditLog.findMany({
     include: { actor: true, organization: true },

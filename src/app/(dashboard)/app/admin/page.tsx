@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAnyPermission, hasPermission } from "@/lib/authz";
+import { requireAnyGlobalPermission, hasGlobalPermission } from "@/lib/authz";
 
 export const metadata: Metadata = { title: "Administração" };
 
@@ -40,12 +40,14 @@ const SECTIONS = [
 ];
 
 export default async function AdminPage() {
-  await requireAnyPermission(ADMIN_PERMISSIONS);
+  // Todo o /app/admin opera sobre dados de todas as organizações, então exige
+  // escopo global — não basta ter a permissão dentro de uma organização.
+  await requireAnyGlobalPermission(ADMIN_PERMISSIONS);
 
   const visible = (
     await Promise.all(
       SECTIONS.map(async (s) =>
-        (await hasPermission(s.permission)) ? s : null,
+        (await hasGlobalPermission(s.permission)) ? s : null,
       ),
     )
   ).filter((s) => s !== null);

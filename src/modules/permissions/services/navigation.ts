@@ -11,6 +11,12 @@ export type NavContext = {
   isAuthenticated: boolean;
   superAdmin: boolean;
   permissionCodes: Set<string>;
+  /**
+   * Permissões de escopo global (SUPER_ADMIN ou vínculo em organização HUB).
+   * Subconjunto de `permissionCodes`, usado pelos itens `requiresGlobalScope`
+   * para que o menu reflita exatamente `requireGlobalPermission`.
+   */
+  globalPermissionCodes: Set<string>;
   activeOrganizationType: string | null; // código do OrganizationType
   hasActiveOrganization: boolean;
   enabledFlags: Set<string>;
@@ -40,8 +46,12 @@ export function filterNavigation(items: NavItem[], ctx: NavContext): NavItem[] {
       item.anyPermission.length > 0 &&
       !ctx.superAdmin
     ) {
-      if (!item.anyPermission.some((code) => ctx.permissionCodes.has(code)))
-        return false;
+      // Itens de escopo global só aceitam permissões globais; ter a permissão
+      // dentro da própria organização não revela a administração da plataforma.
+      const pool = item.requiresGlobalScope
+        ? ctx.globalPermissionCodes
+        : ctx.permissionCodes;
+      if (!item.anyPermission.some((code) => pool.has(code))) return false;
     }
     return true;
   });

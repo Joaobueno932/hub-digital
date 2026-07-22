@@ -7,6 +7,7 @@ export const USERS = {
   superadmin: "superadmin@dev.hubdigital.local",
   admHub: "admhub@dev.hubdigital.local",
   admStartup: "admstartup@dev.hubdigital.local",
+  admEspaco: "admespaco@dev.hubdigital.local",
   multi: "multi@dev.hubdigital.local",
   comum: "comum@dev.hubdigital.local",
   onbNone: "onb.none@dev.hubdigital.local",

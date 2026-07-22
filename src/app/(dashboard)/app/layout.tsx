@@ -22,8 +22,9 @@ export default async function DashboardLayout({
 }) {
   const ctx = await requireSessionContext();
 
+  const globalPermissionCodes = globalPermissions(ctx.access.memberships);
   const permissionCodes = new Set<string>([
-    ...globalPermissions(ctx.access.memberships),
+    ...globalPermissionCodes,
     ...(ctx.activeMembership
       ? permissionsOfMembership(ctx.activeMembership)
       : []),
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
     isAuthenticated: true,
     superAdmin: ctx.access.superAdmin,
     permissionCodes,
+    globalPermissionCodes,
     activeOrganizationType:
       ctx.activeMembership?.organization.type.code ?? null,
     hasActiveOrganization: ctx.activeMembership !== null,

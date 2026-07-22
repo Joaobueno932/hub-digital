@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { listRegistrationRequests } from "@/modules/registrations/services/registration-requests";
 import { parseRegistrationPayload } from "@/modules/registrations/schemas/payloads";
 import type {
@@ -42,7 +42,7 @@ export default async function AdminCadastrosPage({
     page?: string;
   }>;
 }) {
-  await requirePermission("registrations.list");
+  await requireGlobalPermission("registrations.list");
   const params = await searchParams;
 
   const status = STATUSES.includes(params.status as (typeof STATUSES)[number])

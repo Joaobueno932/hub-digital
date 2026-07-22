@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Usuários" };
@@ -9,7 +9,9 @@ export default async function AdminUsuariosPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  await requirePermission("users.list");
+  // Administração de usuários da PLATAFORMA: exige escopo global. Papéis
+  // organizacionais administram apenas as próprias pessoas, em /app/membros.
+  await requireGlobalPermission("users.list");
   const { q } = await searchParams;
 
   const users = await prisma.user.findMany({

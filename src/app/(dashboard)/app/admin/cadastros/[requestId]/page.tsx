@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePermission, hasPermission } from "@/lib/authz";
+import { requireGlobalPermission, hasGlobalPermission } from "@/lib/authz";
 import { getRegistrationRequest } from "@/modules/registrations/services/registration-requests";
 import { parseRegistrationPayload } from "@/modules/registrations/schemas/payloads";
 import { getStageOption } from "@/modules/onboarding/config/stages";
@@ -28,7 +28,7 @@ export default async function CadastroDetalhePage({
 }: {
   params: Promise<{ requestId: string }>;
 }) {
-  const ctx = await requirePermission("registrations.view");
+  const ctx = await requireGlobalPermission("registrations.view");
   const { requestId } = await params;
 
   // ID malformado ou inexistente → 404 genérico, sem vazar informações.
@@ -39,7 +39,7 @@ export default async function CadastroDetalhePage({
   const parsed = parseRegistrationPayload(request.type, request.payload);
   const canDecide =
     request.status === "PENDING" &&
-    (await hasPermission("registrations.approve")) &&
+    (await hasGlobalPermission("registrations.approve")) &&
     request.requesterId !== ctx.user.id;
   const isSelf = request.requesterId === ctx.user.id;
 

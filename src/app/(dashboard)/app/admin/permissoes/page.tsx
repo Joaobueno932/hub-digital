@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Permissões" };
 
 export default async function AdminPermissoesPage() {
-  await requirePermission("permissions.manage");
+  await requireGlobalPermission("permissions.manage");
 
   const permissions = await prisma.permission.findMany({
     orderBy: [{ module: "asc" }, { code: "asc" }],

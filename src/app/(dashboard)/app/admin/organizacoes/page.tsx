@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { listOrganizations } from "@/modules/organizations/services/list-organizations";
 
@@ -24,7 +24,7 @@ export default async function AdminOrganizacoesPage({
     page?: string;
   }>;
 }) {
-  await requirePermission("organizations.list");
+  await requireGlobalPermission("organizations.list");
   const params = await searchParams;
 
   const [{ organizations, total, page, totalPages }, types] = await Promise.all(

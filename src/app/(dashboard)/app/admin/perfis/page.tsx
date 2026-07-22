@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Perfis" };
 
 export default async function AdminPerfisPage() {
-  await requirePermission("roles.manage");
+  await requireGlobalPermission("roles.manage");
 
   const roles = await prisma.role.findMany({
     include: { _count: { select: { permissions: true, memberships: true } } },

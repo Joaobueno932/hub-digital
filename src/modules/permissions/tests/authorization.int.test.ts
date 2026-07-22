@@ -89,20 +89,24 @@ describe("autorização (integração)", () => {
 
   it("permissão concedida por um papel e permissão ausente", async () => {
     const id = await userId("admespaco@dev.hubdigital.local");
-    expect(await hasPermission(id, espacoId, "users.create")).toBe(true);
+    // `members.manage` é a permissão legítima do papel (administra as pessoas
+    // do próprio espaço). `users.*` são de administração da plataforma e não
+    // pertencem a papéis organizacionais — ver docs/matriz-permissoes.md.
+    expect(await hasPermission(id, espacoId, "members.manage")).toBe(true);
+    expect(await hasPermission(id, espacoId, "users.create")).toBe(false);
     expect(await hasPermission(id, espacoId, "registrations.approve")).toBe(
       false,
     );
     expect(
       await hasAnyPermission(id, espacoId, [
         "registrations.approve",
-        "users.create",
+        "members.manage",
       ]),
     ).toBe(true);
     expect(
       await hasAllPermissions(id, espacoId, [
         "registrations.approve",
-        "users.create",
+        "members.manage",
       ]),
     ).toBe(false);
   });

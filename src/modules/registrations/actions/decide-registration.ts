@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@/lib/authz";
+import { requireGlobalPermission } from "@/lib/authz";
 import { approveInputSchema, rejectInputSchema } from "../schemas/decision";
 import { approveRegistrationRequest } from "../services/approve-registration";
 import { rejectRegistrationRequest } from "../services/reject-registration";
@@ -35,7 +35,7 @@ export async function approveRegistrationAction(
   _prev: DecisionState,
   formData: FormData,
 ): Promise<DecisionState> {
-  const ctx = await requirePermission("registrations.approve");
+  const ctx = await requireGlobalPermission("registrations.approve");
 
   const parsed = approveInputSchema.safeParse({
     requestId: formData.get("requestId"),
@@ -62,7 +62,7 @@ export async function rejectRegistrationAction(
   _prev: DecisionState,
   formData: FormData,
 ): Promise<DecisionState> {
-  const ctx = await requirePermission("registrations.reject");
+  const ctx = await requireGlobalPermission("registrations.reject");
 
   const parsed = rejectInputSchema.safeParse({
     requestId: formData.get("requestId"),
