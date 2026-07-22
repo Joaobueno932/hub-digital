@@ -1,0 +1,123 @@
+# Arquitetura — Hub Digital
+
+## Visão geral
+
+Monólito modular full-stack em Next.js (App Router) com PostgreSQL. Um único deploy, com fronteiras de domínio explícitas em `src/modules/*` para permitir extração futura de serviços.
+
+### Por que monólito modular
+
+- Equipe pequena e MVP amplo: um repositório e um pipeline reduzem custo operacional.
+- Os módulos compartilham autenticação, organizações, permissões, arquivos, notificações e auditoria — separar serviços agora criaria acoplamento de rede sem benefício.
+- O desacoplamento é garantido por convenção (módulos não importam internals de outros módulos; apenas serviços públicos) e por feature flags.
+
+## Camadas
+
+1. **Apresentação** — `src/app/**` (páginas, layouts, route handlers) e `src/components/**`. Sem regra de negócio.
+2. **Aplicação** — `actions/` (Server Actions com validação Zod + verificação de sessão/permissão) e `services/` de cada módulo.
+3. **Domínio** — `schemas/`, `types/`, `permissions/` de cada módulo; regras puras e testáveis.
+4. **Infraestrutura** — `src/lib/` (Prisma client, auth, e-mail, storage, rate limit), adaptadores de integração.
+
+## Estrutura de diretórios
+
+Conforme CLAUDE.md, com um módulo adicional `registrations` (solicitações de cadastro) e `feature-flags`:
+
+```text
+src/
+├── app/            # (public), (auth), (dashboard), api
+├── modules/        # auth, users, organizations, memberships, permissions,
+│                   # registrations, onboarding, plans, notifications,
+│                   # files, feature-flags, audit
+├── components/     # ui, layout, forms, feedback
+├── config/         # módulos, navegação, flags padrão
+├── lib/            # prisma, auth, email, rate-limit, storage
+├── hooks/ styles/ types/
+```
+
+Cada módulo: `components/ actions/ services/ repositories/ schemas/ permissions/ types/ tests/` (criados sob demanda).
+
+## Autenticação
+
+- Auth.js (NextAuth v5) com provider Credentials (e-mail/senha) + Prisma Adapter; sessão JWT.
+- Hash de senha com argon2id (ou bcrypt, ver `decisoes-tecnicas.md`).
+- Verificação de e-mail preparada via `VerificationToken`; envio real de e-mail atrás de interface `MailProvider` (mock em dev).
+- Recuperação de senha por token de uso único com expiração.
+- Anti-enumeração: respostas idênticas para e-mail existente/não existente; tempos homogêneos.
+- Rate limiting: interface `RateLimiter` com implementação em memória no MVP e contrato para Redis futuramente.
+- SSO futuro (Keycloak, Entra ID, Google, LinkedIn): Auth.js já suporta múltiplos providers; nenhum é ativado sem credenciais.
+
+## Autorização (RBAC multiempresa)
+
+- Modelo: `User → Membership(Organization) → MembershipRole → Role → RolePermission → Permission`.
+- Permissões granulares no formato `dominio.recurso.acao` (ex.: `users.list`, `registrations.approve`).
+- Papéis globais (SUPER_ADMIN, ADM_HUB) são memberships na organização Hub.
+- Toda Server Action e route handler valida sessão + permissão + escopo da organização ativa **no servidor**. O menu apenas reflete permissões; nunca as substitui.
+- Organização ativa armazenada em cookie assinado/sessão; toda query de dados escopados filtra por `organizationId` do vínculo validado (anti-IDOR).
+
+### Implementação (Etapa 1.4)
+
+- **Serviço central**: `src/modules/permissions/services/authorization.ts` (dados) + `src/lib/authz.ts` (sessão). Nenhuma página consulta permissões diretamente no Prisma.
+- **Como proteger uma página**: chamar `requirePermission("codigo")` ou `requireAnyPermission([...])` no início do server component; para páginas que exigem organização, `requireActiveOrganization()`. Ausência de sessão → redirect `/login`; sem permissão → redirect `/app/acesso-negado` (sem revelar dados); sem organização → `/app/sem-organizacao`.
+- **Como proteger uma server action**: (1) `requireSessionContext()`; (2) validar organização ativa/vínculo; (3) `requirePermission`; (4) validar entrada com Zod; (5) operar sempre escopado ao `organizationId` do vínculo validado; (6) gravar `AuditLog`. Nunca usar IDs de organização vindos do cliente sem conferir contra `ctx.access.memberships`.
+- **Organização ativa**: cookie `hub.active-org` = preferência; validação por request; fallback automático; troca via `switchOrganizationAction` (auditada).
+- **Menu**: novo item = entrada em `src/config/navigation.ts` (label, ícone lucide, rota, grupo, `anyPermission`, `featureFlag`, `organizationTypes`, `requiresOrganization`) + proteção server-side na página. Associar flag a módulo = usar a mesma chave da flag no item e em `canAccessModule`.
+- **Isolamento multiempresa**: consultas escopadas usam sempre `ctx.activeMembership.organizationId`; testar novos casos seguindo `src/modules/permissions/tests/authorization.int.test.ts` (fixtures temporárias + tentativa de acesso cross-org com ID trocado).
+
+### Solicitações de cadastro (Etapa 1.5)
+
+- Estados: `PENDING → APPROVED | REJECTED` (finais). Reenvio/correção reservado para fase futura.
+- Aprovação (`approveRegistrationRequest`): autentica → permissão `registrations.approve` → bloqueio de autoaprovação → validação Zod do payload JSONB → transação com `updateMany` condicionado ao status (OCC) → cria organização/vínculo/papel conforme o tipo → notificação + auditoria → revalidação de rotas. Reprovação (`rejectRegistrationRequest`): justificativa obrigatória (10–1000 chars, trim), mesmo padrão OCC, nada é criado nem apagado.
+- Entidades por tipo: USER → ativa o usuário; STARTUP → Organization(STARTUP) + Membership + ADM_STARTUP; ESPACO_INOVACAO → Organization(ESPACO_INOVACAO) + Membership + ADM_ESPACO_INOVACAO. Nenhum plano é associado.
+- Payload inválido/legado: aprovação bloqueada com estado seguro na UI; reprovação continua possível.
+
+### Testes E2E (Playwright)
+
+- `npm run test:e2e` — exige `docker compose up -d`. O global-setup reseta o banco dedicado `hub_digital_e2e` (`prisma migrate reset` + seed) e faz o build; o `webServer` sobe `next start` na porta 3100 com `DATABASE_URL` própria. Var opcional `E2E_DATABASE_URL` sobrescreve a URL do banco de teste.
+- Suítes: autenticação, organização ativa, permissões/menu e decisões de cadastro. Seletores por role/label/texto.
+
+### Onboarding do usuário (Etapa 1.6)
+
+- **Finalidade**: o usuário classifica seu estágio (uma de cinco opções). Não há cálculo de maturidade, pontuação nem recomendação — o resultado fica persistido para uso futuro.
+- **Módulo** `src/modules/onboarding/`: `config/stages.ts` (fonte única dos 5 estágios), `schemas/`, `services/` (get-onboarding-profile, save-onboarding-draft, complete-onboarding, resolve-post-login-redirect, errors), `actions/`, `components/`, `tests/`.
+- **Persistência/retomada**: rascunho por `userId` da sessão; ao retomar, o estágio salvo vem pré-selecionado. **Finalização** transacional com OCC (status-guard) — idempotente e segura contra concorrência. **Notificação** interna única na conclusão; **auditoria**: `onboarding.started`, `onboarding.draft_saved`, `onboarding.completed`, `onboarding.completion_conflict`.
+- **Redirecionamento pós-login** centralizado: sem onboarding/DRAFT → `/app/onboarding`; COMPLETED → `/app`. `callbackUrl` tem precedência. O dashboard mostra o estado (iniciar/continuar/estágio informado) sem forçar redirect.
+- **Rotas** `/app/onboarding`, `/app/onboarding/revisao`, `/app/onboarding/concluido`: exigem sessão (não organização), carregam apenas o próprio perfil e tratam os estados com redirects seguros.
+
+## Multiempresa
+
+- Tipos de organização: HUB, ESPACO_INOVACAO, STARTUP, EMPRESA, MANTENEDOR, PARCEIRO (tabela `OrganizationType`).
+- Usuário pode ter N vínculos; seletor de organização ativa no layout interno.
+
+## Arquivos
+
+MVP: uploads não são necessários; módulo `files` define a interface `FileStorage` (S3-compatível) com implementação local em dev. Regras: validação de MIME/extensão, limite de tamanho, nomes gerados (UUID), URLs temporárias para privados (futuro).
+
+## Auditoria
+
+`AuditLog` imutável (sem update/delete): ator, organização, ação, entidade, entityId, diff resumido (JSON), IP/user-agent quando disponível. Gravado nos services de ações administrativas e de segurança (login, aprovação, alteração de papéis, flags).
+
+## Notificações
+
+`Notification` interna (in-app) no MVP: destinatário, tipo, título, corpo, lida em. Interface `Notifier` para futura extensão (e-mail, push).
+
+## Feature flags
+
+Tabela `FeatureFlag` (chave, habilitada, escopo opcional por organização) + defaults em `src/config/feature-flags.ts`. Avaliação **no servidor** (`isFeatureEnabled(key, orgId?)`); flags previstas: coworking, events, ideation, projects, trends, reports, academy, payments, external-integrations.
+
+## Integrações
+
+Interfaces por integração (`EventTicketProvider`, `PaymentGateway`, `MailProvider`, `FileStorage`, `LmsProvider`, `BiSource`), com mocks locais. Nenhum endpoint/chave inventado.
+
+## Testes
+
+- Vitest + Testing Library: serviços (autorização, aprovação, onboarding), schemas Zod, componentes críticos.
+- Playwright: fluxos de login, cadastro, aprovação, onboarding (fase posterior do MVP).
+- Testes de autorização são obrigatórios para toda action administrativa.
+
+## Implantação
+
+- Dev: Docker Compose (PostgreSQL) + `next dev`.
+- Produção (proposta, não confirmada): container Node atrás de proxy; migrations via `prisma migrate deploy`; variáveis por ambiente; sem secrets no repositório.
+
+## SSO corporativo futuro
+
+Manter toda criação de usuário passando por `users/services` (não direto no adapter) para que contas provisionadas por SSO/Keycloak entrem no mesmo funil de vínculos e permissões.
