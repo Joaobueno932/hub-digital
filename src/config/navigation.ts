@@ -57,6 +57,14 @@ export const NAV_ITEMS: NavItem[] = [
     anyPermission: ["members.manage"],
   },
   {
+    label: "Convites",
+    icon: "Mail",
+    href: "/app/convites",
+    group: "geral",
+    requiresOrganization: true,
+    anyPermission: ["invitations.manage"],
+  },
+  {
     label: "Agenda",
     icon: "Calendar",
     href: "/app/agenda",

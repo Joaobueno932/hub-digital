@@ -67,6 +67,13 @@ Regras: não gerar logos artificiais; usar logo claro sobre `primary-dark` e esc
 - **Honeypot** (`companyWebsite`) em contêiner fora da tela (`left:-9999px`), com `tabindex=-1` e rótulo — invisível para humanos, presente para bots.
 - Consentimentos em `fieldset`/`legend` com links para `/termos` e `/politica-privacidade`. Estados: erro (alert), conflito (mensagem segura sobre solicitação existente), sucesso (`/cadastro/enviado`). "Minhas solicitações" com tabela responsiva (scroll-x), badges de status e estado vazio.
 
+## Organizações, membros e convites (Etapa 1.8)
+
+- Listagens (`/app/admin/organizacoes`, `/app/membros`) com tabela responsiva (scroll-x) em telas médias/grandes e **cards** em telas pequenas (mesmo dado, marcação diferente — não apenas CSS de ocultar coluna); busca/filtros via `<form method="get">` (sem JS obrigatório), paginação por link.
+- Toda ação destrutiva ou de estado (trocar papel, suspender/reativar/remover membro, suspender/reativar organização, revogar convite) usa **confirmação em `<dialog>` nativo** (foco preso, fechável por ESC), nunca `window.confirm` — mesmo padrão de `DecisionPanel` (Etapa 1.5) e da finalização do onboarding (Etapa 1.6).
+- Mensagens de sucesso (`role=status`) e erro (`role=alert`) dentro do próprio diálogo/formulário; botões com estado de carregamento (`useActionState`).
+- Link de convite (recurso de desenvolvimento, sem envio real de e-mail) exibido como texto selecionável com rótulo explícito de que é temporário — nunca copiado automaticamente para a área de transferência sem ação do usuário.
+
 ## Padrões de layout
 
 - **Cabeçalho público**: logo horizontal, navegação principal (Quem somos, Startups, Serviços, Eventos, Planos, Vagas — rotas do CLAUDE.md), CTA "Entrar"/"Cadastre-se" em accent; colapsa em menu hambúrguer < 1024px.

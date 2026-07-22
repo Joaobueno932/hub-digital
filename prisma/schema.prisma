@@ -35,10 +35,12 @@ model User {
   memberships          Membership[]
   onboarding           OnboardingProfile?
   notifications        Notification[]
-  registrationRequests RegistrationRequest[] @relation("Requester")
-  decidedRequests      RegistrationRequest[] @relation("Decider")
+  registrationRequests RegistrationRequest[]    @relation("Requester")
+  decidedRequests      RegistrationRequest[]    @relation("Decider")
   auditLogs            AuditLog[]
   files                FileAsset[]
+  invitationsSent      OrganizationInvitation[] @relation("InvitedBy")
+  invitationsAccepted  OrganizationInvitation[] @relation("AcceptedInvitation")
 
   @@index([status])
   @@map("users")
@@ -106,21 +108,26 @@ model OrganizationType {
 model Organization {
   id          String             @id @default(uuid()) @db.Uuid
   name        String
+  displayName String?
   slug        String             @unique
   typeId      String             @db.Uuid
   description String?
+  website     String?
+  city        String?
+  state       String?
   status      OrganizationStatus @default(PENDING)
   createdById String?            @db.Uuid
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   deletedAt   DateTime?
 
-  type                 OrganizationType      @relation(fields: [typeId], references: [id])
+  type                 OrganizationType         @relation(fields: [typeId], references: [id])
   memberships          Membership[]
   featureFlags         FeatureFlag[]
   auditLogs            AuditLog[]
   files                FileAsset[]
   registrationRequests RegistrationRequest[]
+  invitations          OrganizationInvitation[]
 
   @@index([typeId, status])
   @@map("organizations")
@@ -163,6 +170,7 @@ model Role {
 
   permissions RolePermission[]
   memberships MembershipRole[]
+  invitations OrganizationInvitation[]
 
   @@map("roles")
 }
@@ -201,6 +209,45 @@ model MembershipRole {
 
   @@id([membershipId, roleId])
   @@map("membership_roles")
+}
+
+// ---------- Convites de organização ----------
+// Ver docs/decisoes-tecnicas.md: tabela dedicada (não reaproveita
+// Membership.status=INVITED) porque um convidado sem conta ainda não tem
+// User.id para satisfazer a FK obrigatória de Membership.
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  email          String // normalizado (lowercase, trim)
+  roleId         String           @db.Uuid
+  status         InvitationStatus @default(PENDING)
+  tokenHash      String           @unique
+  invitedById    String           @db.Uuid
+  acceptedById   String?          @db.Uuid
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  declinedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  role         Role         @relation(fields: [roleId], references: [id])
+  invitedBy    User         @relation("InvitedBy", fields: [invitedById], references: [id])
+  acceptedBy   User?        @relation("AcceptedInvitation", fields: [acceptedById], references: [id])
+
+  @@index([organizationId, status])
+  @@index([email, status])
+  @@map("organization_invitations")
 }
 
 // ---------- Solicitações de cadastro (nunca apagadas fisicamente) ----------

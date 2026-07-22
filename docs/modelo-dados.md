@@ -27,8 +27,9 @@ Formato padrão do Auth.js. `VerificationToken` também usado para verificação
 
 ### Organization
 
-`id`, `name`, `slug` (unique), `typeId → OrganizationType`, `description`, `status` (`PENDING | ACTIVE | SUSPENDED | ARCHIVED`), `createdById`, timestamps, `deletedAt`.
+`id`, `name`, `displayName` (Etapa 1.8, opcional), `slug` (unique), `typeId → OrganizationType`, `description`, `website`/`city`/`state` (Etapa 1.8, opcionais), `status` (`PENDING | ACTIVE | SUSPENDED | ARCHIVED`), `createdById`, timestamps, `deletedAt`.
 Índices: unique(slug), index(typeId, status).
+Campos institucionais definitivos (CNPJ, endereço completo, faturamento, valuation) **não** existem — ver `docs/pendencias-negocio.md`.
 
 ## Vínculos e RBAC
 
@@ -36,6 +37,7 @@ Formato padrão do Auth.js. `VerificationToken` também usado para verificação
 
 `id`, `userId → User`, `organizationId → Organization`, `status` (`ACTIVE | INVITED | SUSPENDED | ENDED`), `createdById`, timestamps, `deletedAt`.
 Unique(userId, organizationId). Encerramento é lógico (histórico).
+`INVITED` permanece definido no enum mas não é usado pelo fluxo de convite (Etapa 1.8) — convites de usuários sem conta prévia usam a tabela `OrganizationInvitation` (abaixo), já que não há `User.id` para satisfazer a FK de `Membership` antes da aceitação.
 
 ### Role
 
@@ -52,6 +54,12 @@ Unique(userId, organizationId). Encerramento é lógico (histórico).
 ### MembershipRole
 
 `membershipId`, `roleId`, `assignedById`, `createdAt` — unique(membershipId, roleId).
+
+### OrganizationInvitation (Etapa 1.8)
+
+`id`, `organizationId → Organization`, `email` (normalizado: trim + lowercase), `roleId → Role`, `status` (`PENDING | ACCEPTED | DECLINED | REVOKED | EXPIRED`), `tokenHash` (unique, sha256 do token — o token em texto puro nunca é persistido), `invitedById → User`, `acceptedById → User` (nulo até aceito), `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt`, timestamps.
+Índices: unique(tokenHash), index(organizationId, status), index(email, status).
+Validade padrão: 7 dias (`INVITATION_EXPIRATION_DAYS`, ajustável). Sem job agendado: um convite `PENDING` com `expiresAt` vencido é marcado `EXPIRED` sob demanda, na leitura (`GET /convites/[token]` ou listagem administrativa). Nunca apagado fisicamente. Duplicidade de convite `PENDING` por (organização, e-mail) é garantida em runtime por advisory lock transacional, mesma técnica do `RegistrationRequest` (Etapa 1.7) — não por índice único parcial, para não conflitar com o dataset de seed.
 
 ## Solicitações de cadastro
 
@@ -117,6 +125,7 @@ Somente inserção; sem update/delete; sem `deletedAt`.
 - User 1—N Membership N—1 Organization; Membership N—N Role (via MembershipRole); Role N—N Permission.
 - RegistrationRequest N—1 User (requester) e N—1 Organization (resultante).
 - FeatureFlag N—1 Organization (override).
+- OrganizationInvitation N—1 Organization, N—1 Role, N—1 User (invitedBy), N—1 User opcional (acceptedBy).
 
 ## Domínios futuros
 

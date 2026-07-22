@@ -79,7 +79,7 @@ Cada módulo: `components/ actions/ services/ repositories/ schemas/ permissions
 ### Testes E2E (Playwright)
 
 - `npm run test:e2e` — exige `docker compose up -d`. O global-setup reseta o banco dedicado `hub_digital_e2e` (`prisma migrate reset` + seed) e faz o build; o `webServer` sobe `next start` na porta 3100 com `DATABASE_URL` própria. Var opcional `E2E_DATABASE_URL` sobrescreve a URL do banco de teste.
-- Suítes: autenticação, organização ativa, permissões/menu e decisões de cadastro. Seletores por role/label/texto.
+- Suítes: autenticação, organização ativa, permissões/menu, decisões de cadastro, solicitações institucionais e gestão de membros/convites (Etapa 1.8). Seletores por role/label/texto.
 
 ### Onboarding do usuário (Etapa 1.6)
 
@@ -88,6 +88,14 @@ Cada módulo: `components/ actions/ services/ repositories/ schemas/ permissions
 - **Persistência/retomada**: rascunho por `userId` da sessão; ao retomar, o estágio salvo vem pré-selecionado. **Finalização** transacional com OCC (status-guard) — idempotente e segura contra concorrência. **Notificação** interna única na conclusão; **auditoria**: `onboarding.started`, `onboarding.draft_saved`, `onboarding.completed`, `onboarding.completion_conflict`.
 - **Redirecionamento pós-login** centralizado: sem onboarding/DRAFT → `/app/onboarding`; COMPLETED → `/app`. `callbackUrl` tem precedência. O dashboard mostra o estado (iniciar/continuar/estágio informado) sem forçar redirect.
 - **Rotas** `/app/onboarding`, `/app/onboarding/revisao`, `/app/onboarding/concluido`: exigem sessão (não organização), carregam apenas o próprio perfil e tratam os estados com redirects seguros.
+
+### Organizações, membros e convites (Etapa 1.8)
+
+- **Módulos**: `src/modules/organizations/` (edição, suspensão/reativação), `src/modules/memberships/` (troca de papel, suspensão/reativação/remoção lógica, `config/role-matrix.ts`, `services/guard-last-admin.ts`), `src/modules/invitations/` (ciclo de vida completo do convite: criação, aceitação, recusa, revogação, token/hash, config de validade).
+- **Padrão de serviço**: idêntico ao de `registrations` (Etapa 1.5) — service puro + `prisma.$transaction` + OCC via `updateMany` condicionado + `AuditLog`/`Notification` dentro da mesma transação + erros tipados mapeados para mensagens seguras na action.
+- **Autorização em organização arbitrária**: `requirePermissionForOrganization` (`src/lib/authz.ts`) estende o padrão de `requirePermission` (que só cobre a organização ativa) para as rotas administrativas sobre organização arbitrária.
+- **Rotas**: `/app/minha-organizacao` (edição, escopo `.own`), `/app/membros` e `/app/convites` (organização ativa), `/convites/[token]` (aceitação/recusa, autenticada com callback interno saneado), `/app/admin/organizacoes`, `/app/admin/organizacoes/[organizationId]` e `/app/admin/organizacoes/[organizationId]/membros` (escopo administrativo, qualquer organização).
+- **Componentes de confirmação**: `<dialog>` nativo (mesmo padrão de `DecisionPanel` da Etapa 1.5) — nunca `window.confirm`.
 
 ## Multiempresa
 

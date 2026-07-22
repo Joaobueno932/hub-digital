@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getAccessContext,
   resolveActiveMembership,
+  hasPermission as hasPermissionForOrganization,
   type AccessContext,
   type MembershipWithAccess,
 } from "@/modules/permissions/services/authorization";
@@ -124,5 +125,26 @@ export async function requireAnyPermission(
   const ctx = await requireSessionContext();
   if (!codes.some((code) => permissionInContext(ctx, code)))
     redirect("/app/acesso-negado");
+  return ctx;
+}
+
+/**
+ * Exige a permissão no escopo de uma organização arbitrária (não
+ * necessariamente a organização ativa) — usada pelas telas de
+ * administração global (`/app/admin/organizacoes/[organizationId]`).
+ * SUPER_ADMIN e permissões de escopo global (ex.: ADM_HUB) continuam
+ * bastando; caso contrário, o ator precisa de um vínculo ativo real na
+ * organização alvo com a permissão.
+ */
+export async function requirePermissionForOrganization(
+  code: string,
+  organizationId: string,
+): Promise<SessionContext> {
+  const ctx = await requireSessionContext();
+  const authorized =
+    ctx.access.superAdmin ||
+    ctx.access.global.has(code) ||
+    (await hasPermissionForOrganization(ctx.user.id, organizationId, code));
+  if (!authorized) redirect("/app/acesso-negado");
   return ctx;
 }

@@ -3,6 +3,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import type { OnboardingStage } from "../src/generated/prisma/enums";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -98,6 +99,11 @@ const PERMISSIONS: Array<{
     description: "Gerenciar membros da organização",
   },
   {
+    code: "invitations.manage",
+    module: "memberships",
+    description: "Gerenciar convites de membros",
+  },
+  {
     code: "roles.manage",
     module: "permissions",
     description: "Gerenciar papéis",
@@ -152,6 +158,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "users.deactivate",
     "organizations.update.own",
     "members.manage",
+    "invitations.manage",
   ],
   USUARIO_ESPACO_INOVACAO: [...COMMON],
   ADM_STARTUP: [
@@ -159,6 +166,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "users.view",
     "organizations.update.own",
     "members.manage",
+    "invitations.manage",
   ],
   USUARIO_EQUIPE_STARTUP: [...COMMON],
   USUARIO_COMUM: [...COMMON],
@@ -900,6 +908,202 @@ async function main() {
         link: "/app/onboarding",
       },
     ],
+  });
+
+  // --- Etapa 1.8: organizações, membros e convites (idempotente) ---
+  const admStartup = await prisma.user.findUniqueOrThrow({
+    where: { email: "admstartup@dev.hubdigital.local" },
+  });
+  const equipeStartup = await prisma.user.findUniqueOrThrow({
+    where: { email: "equipestartup@dev.hubdigital.local" },
+  });
+  const admStartupRoleRow = await prisma.role.findUniqueOrThrow({
+    where: { code: "ADM_STARTUP" },
+  });
+  const equipeRoleRow = await prisma.role.findUniqueOrThrow({
+    where: { code: "USUARIO_EQUIPE_STARTUP" },
+  });
+
+  // Organização com um único administrador ativo — usada para testar o
+  // bloqueio de remoção/suspensão do último administrador.
+  const soloOrg = await prisma.organization.upsert({
+    where: { slug: "startup-solo-admin" },
+    update: { status: "ACTIVE" },
+    create: {
+      name: "Startup Admin Único",
+      slug: "startup-solo-admin",
+      typeId: typeByCode["STARTUP"],
+      status: "ACTIVE",
+      description:
+        "Cenário de teste: organização com apenas um administrador ativo.",
+    },
+  });
+  const soloAdminUser = await prisma.user.upsert({
+    where: { email: "solo.admin@dev.hubdigital.local" },
+    update: { status: "ACTIVE" },
+    create: {
+      email: "solo.admin@dev.hubdigital.local",
+      name: "Admin Único Demo",
+      passwordHash,
+      status: "ACTIVE",
+      emailVerified: new Date(),
+    },
+  });
+  await prisma.onboardingProfile.upsert({
+    where: { userId: soloAdminUser.id },
+    update: {},
+    create: {
+      userId: soloAdminUser.id,
+      status: "COMPLETED",
+      selectedStage: "HAVE_STARTUP_OR_COMPANY",
+      completedAt: new Date(),
+    },
+  });
+  const soloMembership = await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: soloAdminUser.id,
+        organizationId: soloOrg.id,
+      },
+    },
+    update: { status: "ACTIVE" },
+    create: {
+      userId: soloAdminUser.id,
+      organizationId: soloOrg.id,
+      status: "ACTIVE",
+    },
+  });
+  await prisma.membershipRole.upsert({
+    where: {
+      membershipId_roleId: {
+        membershipId: soloMembership.id,
+        roleId: admStartupRoleRow.id,
+      },
+    },
+    update: {},
+    create: { membershipId: soloMembership.id, roleId: admStartupRoleRow.id },
+  });
+
+  // Membro suspenso em startup-aurora (organização com vários membros).
+  const suspendedUser = await prisma.user.upsert({
+    where: { email: "membro.suspenso@dev.hubdigital.local" },
+    update: { status: "ACTIVE" },
+    create: {
+      email: "membro.suspenso@dev.hubdigital.local",
+      name: "Membro Suspenso Demo",
+      passwordHash,
+      status: "ACTIVE",
+      emailVerified: new Date(),
+    },
+  });
+  await prisma.onboardingProfile.upsert({
+    where: { userId: suspendedUser.id },
+    update: {},
+    create: {
+      userId: suspendedUser.id,
+      status: "COMPLETED",
+      selectedStage: "HAVE_STARTUP_OR_COMPANY",
+      completedAt: new Date(),
+    },
+  });
+  const suspendedMembership = await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: suspendedUser.id,
+        organizationId: orgBySlug["startup-aurora"],
+      },
+    },
+    update: { status: "SUSPENDED" },
+    create: {
+      userId: suspendedUser.id,
+      organizationId: orgBySlug["startup-aurora"],
+      status: "SUSPENDED",
+    },
+  });
+  await prisma.membershipRole.upsert({
+    where: {
+      membershipId_roleId: {
+        membershipId: suspendedMembership.id,
+        roleId: equipeRoleRow.id,
+      },
+    },
+    update: {},
+    create: { membershipId: suspendedMembership.id, roleId: equipeRoleRow.id },
+  });
+
+  // Convites em cada estado do ciclo de vida — token de desenvolvimento
+  // conhecido apenas localmente (nunca usar em produção).
+  async function upsertInvitation(input: {
+    organizationId: string;
+    email: string;
+    roleId: string;
+    status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+    devToken: string;
+    invitedById: string;
+    expiresAt: Date;
+    acceptedById?: string;
+  }) {
+    const tokenHash = createHash("sha256").update(input.devToken).digest("hex");
+    await prisma.organizationInvitation.upsert({
+      where: { tokenHash },
+      update: {
+        status: input.status,
+        expiresAt: input.expiresAt,
+        acceptedById: input.acceptedById ?? null,
+      },
+      create: {
+        organizationId: input.organizationId,
+        email: input.email,
+        roleId: input.roleId,
+        tokenHash,
+        invitedById: input.invitedById,
+        status: input.status,
+        expiresAt: input.expiresAt,
+        acceptedById: input.acceptedById,
+      },
+    });
+  }
+
+  const inWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const lastWeek = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+
+  await upsertInvitation({
+    organizationId: orgBySlug["startup-aurora"],
+    email: "convite.pendente@dev.hubdigital.local",
+    roleId: equipeRoleRow.id,
+    status: "PENDING",
+    devToken: "dev-token-pending-0000000000000000000000",
+    invitedById: admStartup.id,
+    expiresAt: inWeek,
+  });
+  await upsertInvitation({
+    organizationId: orgBySlug["startup-aurora"],
+    email: "convite.expirado@dev.hubdigital.local",
+    roleId: equipeRoleRow.id,
+    status: "EXPIRED",
+    devToken: "dev-token-expired-0000000000000000000000",
+    invitedById: admStartup.id,
+    expiresAt: lastWeek,
+  });
+  await upsertInvitation({
+    organizationId: orgBySlug["startup-aurora"],
+    email: "equipestartup@dev.hubdigital.local",
+    roleId: equipeRoleRow.id,
+    status: "ACCEPTED",
+    devToken: "dev-token-accepted-0000000000000000000000",
+    invitedById: admStartup.id,
+    expiresAt: yesterday,
+    acceptedById: equipeStartup.id,
+  });
+  await upsertInvitation({
+    organizationId: orgBySlug["startup-aurora"],
+    email: "convite.revogado@dev.hubdigital.local",
+    roleId: equipeRoleRow.id,
+    status: "REVOKED",
+    devToken: "dev-token-revoked-0000000000000000000000",
+    invitedById: admStartup.id,
+    expiresAt: inWeek,
   });
 
   await prisma.auditLog.create({

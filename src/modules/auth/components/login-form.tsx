@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
+import { sanitizeInternalCallback } from "@/modules/invitations/schemas/decision";
 
 function LoginFormInner() {
   const router = useRouter();
@@ -28,8 +29,12 @@ function LoginFormInner() {
     }
     // callbackUrl (rota protegida) tem precedência; senão, a rota-servidor
     // /app/entrada decide o destino conforme o estado do onboarding.
-    const callbackUrl = searchParams.get("callbackUrl");
-    router.push(callbackUrl ?? "/app/entrada");
+    // Sempre saneado como caminho interno — nunca um domínio externo.
+    const rawCallback = searchParams.get("callbackUrl");
+    const destination = rawCallback
+      ? sanitizeInternalCallback(rawCallback)
+      : "/app/entrada";
+    router.push(destination);
     router.refresh();
   }
 

@@ -45,8 +45,21 @@ Este documento registra dúvidas e decisões que precisam ser confirmadas antes 
 - **Termos e política definitivos** (LGPD): responsável pelo tratamento, retenção, canais.
 - **Consentimento de marketing** será separado dos termos?
 - Como tratar **solicitações duplicadas por organização já existente** (mesmo CNPJ/nome)?
-- **Convite/ativação** para solicitante aprovado sem conta (não implementado nesta fase).
+- ~~**Convite/ativação** para solicitante aprovado sem conta (não implementado nesta fase).~~ **Resolvido na Etapa 1.8**: fluxo de convite completo (criação, aceitação, recusa, revogação, expiração).
 - Endurecimento anti-abuso: tempo mínimo de submissão e índice único parcial (hoje advisory lock).
+
+## Adicionadas na Etapa 1.8 — Organizações, membros e convites (2026-07-22)
+
+- Prazo definitivo do convite: hoje fixo em 7 dias (`INVITATION_EXPIRATION_DAYS`), sem confirmação de gestão sobre o valor correto.
+- Reenvio de convite (gerar novo token para o mesmo e-mail/organização sem esperar expirar) não está implementado — hoje é preciso revogar e criar um novo.
+- Modelo de e-mail transacional (texto, remetente, identidade visual) não definido — envio real de e-mail não está implementado nesta etapa.
+- Transferência de administrador principal (situações em que o único administrador precisa transferir a função antes de sair) não tem fluxo dedicado — hoje só é possível promover outro membro antes de sair.
+- Quantidade máxima de membros por organização não definida (hoje sem limite).
+- Necessidade de justificativa obrigatória para suspensão/remoção de membro não confirmada (hoje opcional/ausente, diferente da reprovação de cadastro que exige).
+- Possibilidade de um usuário ter dois vínculos ativos simultâneos na mesma organização: hoje bloqueada por design (`unique(userId, organizationId)` em `Membership`).
+- Campos institucionais definitivos da organização (CNPJ, endereço completo, dados jurídicos) continuam indefinidos — apenas nome, nome de exibição, descrição, site, cidade e estado foram implementados.
+- Política de suspensão de organização (quem é notificado, prazo de reversão, efeito sobre dados/arquivos da organização) não está definida além do bloqueio de acesso já implementado.
+- Papéis para organizações do tipo EMPRESA/MANTENEDOR/PARCEIRO não foram definidos — convites e trocas de papel para esses tipos ficam bloqueados até a definição.
 
 ## Escopo
 

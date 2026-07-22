@@ -64,6 +64,8 @@ Fase 1 dividida em etapas pequenas. Cada etapa: objetivo, dependências, entreg�
 - **Dependências:** 1.5.
 - **CA:** cada tela paginada, com busca, protegida por permissão, com auditoria nas mutações.
 
+> **Etapa 1.8 concluída em 2026-07-22** (escopo de gestão de organizações/membros/convites, conforme especificação dedicada — usuários/feature-flags/CRUD completo de organizações ficam para uma etapa futura de administração ampla): edição e suspensão/reativação de organização (OCC via `updatedAt`), listagem administrativa de organizações com busca/filtro/paginação/ordenação e tela de detalhe (`/app/admin/organizacoes/[id]`), gestão completa de membros (troca de papel com matriz papel-por-tipo-de-organização e regra de autoridade, suspensão/reativação/remoção lógica, proteção do último administrador), ciclo de vida completo de convites (criação com token hasheado, aceitação/recusa/revogação/expiração preguiçosa, e-mail real não implementado), auditoria e notificações em todas as mutações, testes unitários/integração/Playwright, proteção contra IDOR em todas as rotas/actions/services.
+
 ## Etapa 1.9 — Ambiente público
 
 - **Objetivo:** landing page com identidade oficial (assets.json, hero/acceleration/footer webp), login/cadastro/recuperação estilizados, institucionais mínimas.
