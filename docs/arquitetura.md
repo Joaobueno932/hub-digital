@@ -98,6 +98,16 @@ Cada módulo: `components/ actions/ services/ repositories/ schemas/ permissions
 - **Rotas**: `/app/minha-organizacao` (edição, escopo `.own`), `/app/membros` e `/app/convites` (organização ativa), `/convites/[token]` (aceitação/recusa, autenticada com callback interno saneado), `/app/admin/organizacoes`, `/app/admin/organizacoes/[organizationId]` e `/app/admin/organizacoes/[organizationId]/membros` (escopo administrativo, qualquer organização).
 - **Componentes de confirmação**: `<dialog>` nativo (mesmo padrão de `DecisionPanel` da Etapa 1.5) — nunca `window.confirm`.
 
+### Usuários e feature flags (Etapa 1.9)
+
+- **Módulos**: `src/modules/users/` (listagem, detalhe, edição, suspensão/reativação, guardas de SUPER_ADMIN) e `src/modules/feature-flags/` (catálogo, resolução, alteração global e override por organização). Mesmo padrão das etapas anteriores: service puro + transação + OCC + auditoria/notificação + erros tipados mapeados na action.
+- **Escopo global**: `/app/admin` usa `requireGlobalPermission`/`requireAnyGlobalPermission`; o menu espelha com `requiresGlobalScope`.
+- **Catálogo de flags**: `src/config/feature-flags.ts` (nome, módulo, `superAdminOnly`) é a autoridade de validação — chave fora dele é rejeitada. O banco guarda só o estado.
+- **Avaliação**: `src/modules/feature-flags/services/resolve-flag.ts` é a única implementação da precedência (override da organização > global > desabilitada). `isFeatureEnabled` (autorização) e `getEnabledFlags` (menu) delegam para ela.
+- **Proteção de rota**: `requireFeature(key)` em `src/lib/authz.ts` redireciona para `/app/modulo-indisponivel` quando a flag está desabilitada — vale para todos, inclusive SUPER_ADMIN. As rotas de módulo das fases 2–6 existem como páginas "em preparação" guardadas por ela.
+- **Suspensão de conta**: o corte de acesso vem da revalidação por request (`getCurrentUser` filtra `status: ACTIVE`) e da recusa no `authorize`; JWT não é revogável no servidor.
+- **Auditoria de bloqueio/conflito** é gravada **fora** da transação (no `catch`), senão o rollback a apagaria.
+
 ## Multiempresa
 
 - Tipos de organização: HUB, ESPACO_INOVACAO, STARTUP, EMPRESA, MANTENEDOR, PARCEIRO (tabela `OrganizationType`).

@@ -11,7 +11,7 @@ export const ADMIN_PERMISSIONS = [
   "roles.manage",
   "permissions.manage",
   "audit.view",
-  "feature-flags.manage",
+  "feature-flags.list",
 ];
 
 const SECTIONS = [
@@ -36,6 +36,11 @@ const SECTIONS = [
     href: "/app/admin/auditoria",
     label: "Auditoria",
     permission: "audit.view",
+  },
+  {
+    href: "/app/admin/feature-flags",
+    label: "Feature flags",
+    permission: "feature-flags.list",
   },
 ];
 

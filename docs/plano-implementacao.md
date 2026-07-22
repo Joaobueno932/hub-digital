@@ -66,6 +66,10 @@ Fase 1 dividida em etapas pequenas. Cada etapa: objetivo, dependências, entreg�
 
 > **Etapa 1.8 concluída em 2026-07-22** (escopo de gestão de organizações/membros/convites, conforme especificação dedicada — usuários/feature-flags/CRUD completo de organizações ficam para uma etapa futura de administração ampla): edição e suspensão/reativação de organização (OCC via `updatedAt`), listagem administrativa de organizações com busca/filtro/paginação/ordenação e tela de detalhe (`/app/admin/organizacoes/[id]`), gestão completa de membros (troca de papel com matriz papel-por-tipo-de-organização e regra de autoridade, suspensão/reativação/remoção lógica, proteção do último administrador), ciclo de vida completo de convites (criação com token hasheado, aceitação/recusa/revogação/expiração preguiçosa, e-mail real não implementado), auditoria e notificações em todas as mutações, testes unitários/integração/Playwright, proteção contra IDOR em todas as rotas/actions/services.
 
+> **Etapa 1.9 (administração de usuários e feature flags) concluída em 2026-07-22.** Complementa a "Etapa 1.8 — Administração" acima, cujos itens de **usuários** e **feature flags** haviam sido adiados. Entregue: `/app/admin/usuarios` com busca, filtros (status/papel/organização), ordenação e paginação server-side; `/app/admin/usuarios/[userId]` com vínculos, papéis, onboarding, solicitações, notificações e auditoria, usando `select` explícito para nunca carregar `passwordHash`/tokens/sessões; suspensão e reativação com motivo, responsável, auditoria e notificação; proteções de auto-suspensão, SUPER_ADMIN protegido e último SUPER_ADMIN ativo; catálogo central de flags (`src/config/feature-flags.ts`), avaliação centralizada com precedência override→global, `/app/admin/feature-flags` com valores global/organização/efetivo e origem, criação/atualização/remoção de override; `requireFeature` bloqueando rota de módulo desabilitado (com 11 páginas "em preparação"); permissões novas de usuários e flags; migration aditiva; seed com os cenários; testes unitários, de integração e Playwright.
+>
+> **Nota de numeração**: a "Etapa 1.9 — Ambiente público" descrita abaixo (landing com identidade oficial) já havia sido entregue no commit `626cc7b`. A etapa de administração recebeu o mesmo número na especificação de execução; os dois escopos estão concluídos.
+
 ## Etapa 1.9 — Ambiente público
 
 - **Objetivo:** landing page com identidade oficial (assets.json, hero/acceleration/footer webp), login/cadastro/recuperação estilizados, institucionais mínimas.
@@ -78,6 +82,32 @@ Fase 1 dividida em etapas pequenas. Cada etapa: objetivo, dependências, entreg�
 - **CA:** critérios de conclusão da Fase 1 do CLAUDE.md atendidos; relatório com resultados reais.
 
 > **Etapa 1.7 concluída em 2026-07-22**: formulários públicos de solicitação de Startup e Espaço de Inovação (RHF + Zod), exigindo autenticação; serviço de submissão com rate limiting (usuário + IP anonimizado), honeypot, advisory lock transacional para duplicidade/concorrência, auditoria e notificação de administradores; página de sucesso; "Minhas solicitações"; páginas legais provisórias; compatível com a aprovação existente (payload compartilhado). Sem migration. Testes unit/integração/Playwright.
+
+## Estado da Fase 1 — revisão de 2026-07-22
+
+Classificação: **C** concluído · **P** parcialmente concluído · **PT** pendência técnica · **PN** pendência de negócio · **F** fora do MVP.
+
+| Item                        | Estado | Observação                                                                                                                                                  |
+| --------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Autenticação (e-mail/senha) | C      | Auth.js v5, JWT, bcrypt, rate limit, anti-enumeração. Login recusa conta não-ACTIVE.                                                                        |
+| Recuperação de senha        | P/PT   | Tela existe; **envio real de e-mail não implementado** — token/fluxo dependem de provedor.                                                                  |
+| Verificação de e-mail       | P/PT   | `VerificationToken` modelado; sem envio real. Alteração de e-mail pela administração bloqueada por falta desse fluxo.                                       |
+| Cadastro comum              | C      | `/cadastro` com validação, anti-enumeração e auditoria.                                                                                                     |
+| Solicitações institucionais | C      | Envio público autenticado, rate limit, honeypot, advisory lock, aprovação/reprovação transacional.                                                          |
+| Onboarding                  | C      | 5 estágios, rascunho/retomada/conclusão idempotente. Cálculo de maturidade é **F** nesta fase.                                                              |
+| Organizações                | C      | Edição com OCC, suspensão/reativação, listagem administrativa com filtros e detalhe.                                                                        |
+| Membros e papéis            | C      | Matriz papel×tipo, autoridade, suspensão/reativação/remoção lógica, proteção do último administrador.                                                       |
+| Convites                    | P      | Ciclo completo (criar/aceitar/recusar/revogar/expirar) com token hasheado. **Sem e-mail real** — link exposto na tela para quem tem permissão. Reenvio: PN. |
+| Usuários (administração)    | C      | Listagem com filtros/paginação, detalhe, suspensão/reativação, proteções. "Último acesso": **PN** (sem dado confiável).                                     |
+| Permissões / RBAC           | C      | Escopo por organização + escopo global (`requireGlobalPermission`), anti-IDOR, matriz documentada.                                                          |
+| Feature flags               | C      | Catálogo em código, global + override por organização, precedência centralizada, UI e bloqueio de rota.                                                     |
+| Módulos das fases 2–6       | C      | Aparecem no menu quando habilitados e exibem página "em preparação" — conforme CLAUDE.md. Funcionalidades: **F** nesta fase.                                |
+| Notificações                | P      | Notificações internas em todas as mutações relevantes. Central de leitura/marcação e notificação em massa: **PN**.                                          |
+| Auditoria                   | C      | Todas as mutações auditadas. Correção da 1.9: registro de bloqueio/conflito fora da transação. Serviços de cadastro ainda com o padrão antigo: **PT**.      |
+| Testes                      | C      | 189 unitários/integração (Postgres real) + Playwright. Instabilidade das duas specs de cadastro em conjunto: **PT** documentada.                            |
+| Documentação                | C      | 9 documentos atualizados a cada etapa.                                                                                                                      |
+| Deploy                      | PT     | Sem pipeline/infra definida — só `docker compose` local. Depende de decisão de hospedagem.                                                                  |
+| Planos, pagamentos, SSO     | F      | Fora do MVP da Fase 1.                                                                                                                                      |
 
 ## Fases futuras (resumo)
 

@@ -58,9 +58,15 @@ async function handleSubmission(
   const type = cfg.type as RegistrationType;
 
   // Rate limiting: por usuário e por IP anonimizado (memória — dev).
+  // O teto por IP é configurável porque um mesmo IP pode concentrar muitos
+  // usuários legítimos (NAT corporativo, proxy) — e é exatamente o caso da
+  // suíte E2E, onde todo o tráfego vem de 127.0.0.1. O padrão é o de
+  // produção; o limite por usuário, que é a proteção relevante contra abuso
+  // individual, não é configurável.
+  const ipLimit = Number(process.env.REGISTRATION_IP_RATE_LIMIT ?? 10);
   const ipHash = await anonymizedIpHash();
   const okUser = checkRateLimit(`reg-submit:user:${user.id}`, 5, 60_000);
-  const okIp = checkRateLimit(`reg-submit:ip:${ipHash}`, 10, 60_000);
+  const okIp = checkRateLimit(`reg-submit:ip:${ipHash}`, ipLimit, 60_000);
   if (!okUser || !okIp) {
     await audit(user.id, "registration_request.rate_limited", { type });
     return {

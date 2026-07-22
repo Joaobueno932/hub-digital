@@ -15,6 +15,8 @@ Escopo: permissões de AE/UE valem apenas na organização (espaço) do vínculo
 | users.create                                         | ✓   | ✓   | –   | –   | –   | –   | –   | C (US-01) — **global**                            |
 | users.update                                         | ✓   | ✓   | –   | –   | –   | –   | –   | C (US-02) — **global**                            |
 | users.deactivate                                     | ✓   | ✓   | –   | –   | –   | –   | –   | C (US-03, como exclusão lógica) — **global**      |
+| users.suspend                                        | ✓   | ✓   | –   | –   | –   | –   | –   | P (Etapa 1.9) — **global**                        |
+| users.reactivate                                     | ✓   | ✓   | –   | –   | –   | –   | –   | P (Etapa 1.9) — **global**                        |
 | registrations.list / view                            | ✓   | ✓   | –   | –   | –   | –   | –   | C (story map AH)                                  |
 | registrations.approve / reject                       | ✓   | ✓   | –   | –   | –   | –   | –   | C (US-07/08)                                      |
 | organizations.list / view                            | ✓   | ✓   | –   | –   | –   | –   | –   | P                                                 |
@@ -25,7 +27,11 @@ Escopo: permissões de AE/UE valem apenas na organização (espaço) do vínculo
 | roles.manage / permissions.manage                    | ✓   | ✓   | –   | –   | –   | –   | –   | P (V: AE cria papéis personalizados?)             |
 | plans.manage                                         | ✓   | ✓   | –   | –   | –   | –   | –   | C (US-15)                                         |
 | plans.view                                           | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | C                                                 |
-| feature-flags.manage                                 | ✓   | ✓   | –   | –   | –   | –   | –   | P                                                 |
+| feature-flags.manage (legado)                        | ✓   | ✓   | –   | –   | –   | –   | –   | P                                                 |
+| feature-flags.list                                   | ✓   | ✓   | –   | –   | –   | –   | –   | P (Etapa 1.9) — **global**                        |
+| feature-flags.update-global                          | ✓   | ✓\* | –   | –   | –   | –   | –   | P (Etapa 1.9) — \*AH não altera flags sensíveis   |
+| feature-flags.update-organization                    | ✓   | ✓\* | –   | –   | –   | –   | –   | P (Etapa 1.9) — \*idem                            |
+| feature-flags.remove-override                        | ✓   | ✓\* | –   | –   | –   | –   | –   | P (Etapa 1.9) — \*idem                            |
 | audit.view                                           | ✓   | ✓   | –   | –   | –   | –   | –   | P                                                 |
 | notifications.view.own                               | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | P                                                 |
 | onboarding.complete.own                              | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | ✓   | C (GP US-03)                                      |
@@ -54,6 +60,8 @@ Escopo: permissões de AE/UE valem apenas na organização (espaço) do vínculo
 > 2. Todo o `/app/admin` passa a exigir **escopo global** via `requireGlobalPermission`/`requireAnyGlobalPermission` (`src/lib/authz.ts`), que aceitam apenas SUPER_ADMIN ou permissões vindas de vínculo em organização HUB — nunca a permissão concedida dentro da organização ativa. O item de menu "Administração" usa `requiresGlobalScope` (`src/config/navigation.ts`) para refletir exatamente essa regra e não exibir um card que levaria a "acesso negado".
 >
 > **A administração das pessoas da própria organização continua em `/app/membros`**, via `members.manage` — escopada ao vínculo e já coberta pela Etapa 1.8. Nenhum perfil organizacional perdeu capacidade real: perdeu apenas o acesso indevido a dados de outras organizações. Cobertura: `src/modules/permissions/tests/global-scope.int.test.ts` e `e2e/permissions.spec.ts`.
+
+> **Implementação (Etapa 1.9) — administração de usuários e feature flags.** `/app/admin/usuarios` e `/app/admin/feature-flags` exigem **escopo global** (`requireGlobalPermission`). Regras adicionais aplicadas no serviço, não só na UI: só SUPER_ADMIN administra outro SUPER_ADMIN; ninguém suspende a própria conta; a plataforma nunca fica sem um SUPER_ADMIN ativo (guarda `assertNotLastActiveSuperAdmin`, válida inclusive para SUPER_ADMIN); papéis, organizações, senha e e-mail **não** são editáveis por essas telas — papéis/organizações continuam nos serviços de membership (Etapa 1.8) e o e-mail é somente leitura por falta de fluxo de confirmação. Flags marcadas `superAdminOnly` no catálogo (`payments`, `external-integrations`) só o SUPER_ADMIN altera — ADM_HUB pode ligar/desligar as demais.
 
 ## Regras de aplicação
 

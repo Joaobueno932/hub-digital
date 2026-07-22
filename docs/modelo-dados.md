@@ -11,9 +11,13 @@ Convenções gerais:
 
 ### User
 
-`id`, `name`, `email` (unique, citext/lowercase), `emailVerified`, `passwordHash` (nulo para futuros usuários SSO), `image`, `status` (`PENDING | ACTIVE | SUSPENDED | DEACTIVATED`), `createdAt`, `updatedAt`, `deletedAt`.
+`id`, `name`, `email` (unique, citext/lowercase), `emailVerified`, `passwordHash` (nulo para futuros usuários SSO), `image`, `status` (`PENDING | ACTIVE | SUSPENDED | DEACTIVATED`), `suspendedAt`, `suspendedById → User`, `suspensionReason` (Etapa 1.9), `createdAt`, `updatedAt`, `deletedAt`.
 Sem campo `role` — papéis vêm de memberships.
 Índices: unique(email), index(status).
+
+**Estados da conta**: `PENDING` (aguardando aprovação/ativação), `ACTIVE`, `SUSPENDED` (bloqueio administrativo reversível, com motivo e responsável registrados), `DEACTIVATED` (reservado para desativação a pedido do próprio usuário — ainda sem fluxo). Não há exclusão física: `deletedAt` faz a exclusão lógica preservando histórico.
+
+**Não existe `lastLoginAt`**: a estratégia de sessão é JWT (a tabela `Session` do adapter fica vazia) e não há auditoria de login, então não há dado confiável de "último acesso". A coluna foi deliberadamente omitida da administração — registrado em `pendencias-negocio.md`.
 
 ### Account / Session / VerificationToken
 
@@ -96,8 +100,9 @@ Nunca apagada fisicamente. Índices: index(status, type), index(requesterId).
 
 ### FeatureFlag
 
-`id`, `key` (unique por escopo), `enabled`, `organizationId` (nulo = global; override por organização), `description`, timestamps.
-Unique(key, organizationId).
+`id`, `key` (unique por escopo), `enabled`, `organizationId` (nulo = global; override por organização), `description`, `updatedById → User` (ator da última alteração, Etapa 1.9), timestamps.
+Unique(key, organizationId) — é o que impede override duplicado; **não existe tabela separada de override**, o escopo é o próprio `organizationId`.
+**Precedência**: override da organização vence o valor global; sem override, vale o global; chave fora do catálogo conta como desabilitada. Implementação única em `src/modules/feature-flags/services/resolve-flag.ts` (consumida por `isFeatureEnabled` e pelo menu). O **catálogo** (nome, módulo, sensibilidade) vive em `src/config/feature-flags.ts` — o banco guarda apenas o estado.
 
 ## Notificações
 

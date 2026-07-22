@@ -1,5 +1,5 @@
 import { NAV_ITEMS, type NavItem } from "@/config/navigation";
-import { prisma } from "@/lib/prisma";
+import { getEffectiveEnabledFlags } from "@/modules/feature-flags/services/resolve-flag";
 
 /**
  * Filtro do menu — função pura (testável) + carregador de flags.
@@ -57,26 +57,15 @@ export function filterNavigation(items: NavItem[], ctx: NavContext): NavItem[] {
   });
 }
 
-/** Flags habilitadas para a organização (override por organização vence a global). */
+/**
+ * Flags habilitadas para a organização (override por organização vence a
+ * global). Delega para o serviço central para não duplicar a regra de
+ * precedência — ver `src/modules/feature-flags/services/resolve-flag.ts`.
+ */
 export async function getEnabledFlags(
   organizationId: string | null,
 ): Promise<Set<string>> {
-  const flags = await prisma.featureFlag.findMany({
-    where: organizationId
-      ? { OR: [{ organizationId: null }, { organizationId }] }
-      : { organizationId: null },
-  });
-  const byKey = new Map<string, boolean>();
-  for (const flag of flags) {
-    if (flag.organizationId === null && !byKey.has(flag.key))
-      byKey.set(flag.key, flag.enabled);
-  }
-  for (const flag of flags) {
-    if (flag.organizationId !== null) byKey.set(flag.key, flag.enabled);
-  }
-  return new Set(
-    [...byKey.entries()].filter(([, enabled]) => enabled).map(([key]) => key),
-  );
+  return getEffectiveEnabledFlags(organizationId);
 }
 
 export function buildNavigation(ctx: NavContext) {

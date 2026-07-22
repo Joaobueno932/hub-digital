@@ -49,6 +49,16 @@ const PERMISSIONS: Array<{
     description: "Desativar usuário",
   },
   {
+    code: "users.suspend",
+    module: "users",
+    description: "Suspender conta de usuário",
+  },
+  {
+    code: "users.reactivate",
+    module: "users",
+    description: "Reativar conta de usuário",
+  },
+  {
     code: "registrations.list",
     module: "registrations",
     description: "Listar solicitações de cadastro",
@@ -118,7 +128,27 @@ const PERMISSIONS: Array<{
   {
     code: "feature-flags.manage",
     module: "feature-flags",
-    description: "Gerenciar feature flags",
+    description: "Gerenciar feature flags (legado — prefira as granulares)",
+  },
+  {
+    code: "feature-flags.list",
+    module: "feature-flags",
+    description: "Listar feature flags",
+  },
+  {
+    code: "feature-flags.update-global",
+    module: "feature-flags",
+    description: "Alterar feature flag global",
+  },
+  {
+    code: "feature-flags.update-organization",
+    module: "feature-flags",
+    description: "Definir override de feature flag por organização",
+  },
+  {
+    code: "feature-flags.remove-override",
+    module: "feature-flags",
+    description: "Remover override de feature flag de organização",
   },
   { code: "audit.view", module: "audit", description: "Visualizar auditoria" },
   {
@@ -1112,6 +1142,127 @@ async function main() {
     invitedById: admStartup.id,
     expiresAt: inWeek,
   });
+
+  // --- Etapa 1.9: administração de usuários e feature flags ---
+
+  // Segundo SUPER_ADMIN: permite testar a proteção do último super
+  // administrador (com apenas um, toda suspensão seria bloqueada).
+  const superAdminRole = await prisma.role.findUniqueOrThrow({
+    where: { code: "SUPER_ADMIN" },
+  });
+  const superadmin2 = await prisma.user.upsert({
+    where: { email: "superadmin2@dev.hubdigital.local" },
+    update: { status: "ACTIVE" },
+    create: {
+      email: "superadmin2@dev.hubdigital.local",
+      name: "Super Admin Secundário",
+      passwordHash,
+      status: "ACTIVE",
+      emailVerified: new Date(),
+    },
+  });
+  await prisma.onboardingProfile.upsert({
+    where: { userId: superadmin2.id },
+    update: {},
+    create: {
+      userId: superadmin2.id,
+      status: "COMPLETED",
+      selectedStage: "HAVE_STARTUP_OR_COMPANY",
+      completedAt: new Date(),
+    },
+  });
+  const superadmin2Membership = await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: superadmin2.id,
+        organizationId: orgBySlug["hub-digital"],
+      },
+    },
+    update: { status: "ACTIVE" },
+    create: {
+      userId: superadmin2.id,
+      organizationId: orgBySlug["hub-digital"],
+      status: "ACTIVE",
+    },
+  });
+  await prisma.membershipRole.upsert({
+    where: {
+      membershipId_roleId: {
+        membershipId: superadmin2Membership.id,
+        roleId: superAdminRole.id,
+      },
+    },
+    update: {},
+    create: {
+      membershipId: superadmin2Membership.id,
+      roleId: superAdminRole.id,
+    },
+  });
+
+  // Usuário com a CONTA suspensa (diferente de `membro.suspenso@`, que tem
+  // apenas o vínculo suspenso). Sem `update: { status: "ACTIVE" }` — os demais
+  // upserts de usuário reativam a conta, e este cenário precisa sobreviver a
+  // reexecuções do seed.
+  const suspendedAccountUser = await prisma.user.upsert({
+    where: { email: "conta.suspensa@dev.hubdigital.local" },
+    update: {},
+    create: {
+      email: "conta.suspensa@dev.hubdigital.local",
+      name: "Conta Suspensa Demo",
+      passwordHash,
+      status: "SUSPENDED",
+      emailVerified: new Date(),
+      suspendedAt: new Date(),
+      suspendedById: admHub.id,
+      suspensionReason: "Conta suspensa para demonstração e testes.",
+    },
+  });
+  await prisma.onboardingProfile.upsert({
+    where: { userId: suspendedAccountUser.id },
+    update: {},
+    create: {
+      userId: suspendedAccountUser.id,
+      status: "COMPLETED",
+      selectedStage: "HAVE_IDEA",
+      completedAt: new Date(),
+    },
+  });
+
+  // Cenários de feature flag: uma global ligada, overrides ligado e desligado.
+  // `startup-aurora` recebe os overrides; `espaco-inovacao-centro` fica sem
+  // nenhum, para exercitar a herança do valor global.
+  const agendaGlobal = await prisma.featureFlag.findFirst({
+    where: { key: "agenda", organizationId: null },
+  });
+  if (agendaGlobal && !agendaGlobal.enabled) {
+    await prisma.featureFlag.update({
+      where: { id: agendaGlobal.id },
+      data: { enabled: true, updatedById: superadmin.id },
+    });
+  }
+  for (const override of [
+    // Global ligada + override desligado → efetivo desligado nesta organização.
+    { key: "agenda", slug: "startup-aurora", enabled: false },
+    // Global desligada + override ligado → efetivo ligado nesta organização.
+    { key: "connections", slug: "startup-aurora", enabled: true },
+  ]) {
+    await prisma.featureFlag.upsert({
+      where: {
+        key_organizationId: {
+          key: override.key,
+          organizationId: orgBySlug[override.slug],
+        },
+      },
+      update: {},
+      create: {
+        key: override.key,
+        organizationId: orgBySlug[override.slug],
+        enabled: override.enabled,
+        description: `Override de ${override.key} para ${override.slug}`,
+        updatedById: superadmin.id,
+      },
+    });
+  }
 
   await prisma.auditLog.create({
     data: {

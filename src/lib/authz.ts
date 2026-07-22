@@ -8,6 +8,7 @@ import {
   getAccessContext,
   resolveActiveMembership,
   hasPermission as hasPermissionForOrganization,
+  isFeatureEnabled,
   type AccessContext,
   type MembershipWithAccess,
 } from "@/modules/permissions/services/authorization";
@@ -179,6 +180,24 @@ export async function requireAnyGlobalPermission(
   const ctx = await requireSessionContext();
   if (!codes.some((code) => globalPermissionInContext(ctx, code)))
     redirect("/app/acesso-negado");
+  return ctx;
+}
+
+/**
+ * Exige que um módulo esteja habilitado para a organização ativa.
+ *
+ * Ocultar o item no menu é conveniência de UI; esta guarda é o que realmente
+ * impede o acesso direto por URL. Uma flag desligada bloqueia **todos**,
+ * inclusive SUPER_ADMIN — módulo indisponível é indisponível para a
+ * plataforma inteira (mesma semântica de `filterNavigation`).
+ */
+export async function requireFeature(key: string): Promise<SessionContext> {
+  const ctx = await requireSessionContext();
+  const enabled = await isFeatureEnabled(
+    key,
+    ctx.activeMembership?.organizationId ?? null,
+  );
+  if (!enabled) redirect("/app/modulo-indisponivel");
   return ctx;
 }
 

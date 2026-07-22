@@ -61,6 +61,20 @@ Este documento registra dúvidas e decisões que precisam ser confirmadas antes 
 - Política de suspensão de organização (quem é notificado, prazo de reversão, efeito sobre dados/arquivos da organização) não está definida além do bloqueio de acesso já implementado.
 - Papéis para organizações do tipo EMPRESA/MANTENEDOR/PARCEIRO não foram definidos — convites e trocas de papel para esses tipos ficam bloqueados até a definição.
 
+## Adicionadas na Etapa 1.9 — Usuários e feature flags (2026-07-22)
+
+- **"Último acesso" não existe**: não há `lastLoginAt`, a tabela `Session` fica vazia (sessão JWT) e não há auditoria de login. Exibir a coluna exigiria decidir entre adicionar campo no `User` (atualizado a cada login) ou registrar login em `AuditLog` — cada opção tem custo de escrita e implicação de privacidade. **Definir a estratégia antes de prometer o dado.**
+- **Alteração de e-mail pela administração** continua bloqueada (somente leitura): exige fluxo de confirmação no endereço novo (e provavelmente no antigo) para não permitir tomada de conta. Definir o fluxo.
+- **Notificação de mudança de disponibilidade de módulo**: hoje ninguém é avisado quando uma flag muda. Notificar todos os usuários a cada alteração geraria ruído desproporcional. Definir se haverá aviso, para quem e com qual agregação.
+- **`DEACTIVATED`** está no enum mas sem fluxo: falta decidir se é desativação a pedido do próprio usuário (LGPD) e como se relaciona com `deletedAt`.
+- **Papéis das organizações EMPRESA/MANTENEDOR/PARCEIRO** seguem indefinidos (herdado da Etapa 1.8), o que mantém convites e trocas de papel bloqueados nesses tipos.
+- **Critério de flags sensíveis**: hoje `payments` e `external-integrations` são `superAdminOnly` por decisão técnica (efeito financeiro/externo). Confirmar com a gestão se a lista está correta.
+
+### Pendências técnicas (dívida conhecida, não são decisões de negócio)
+
+- **Auditoria de tentativa bloqueada dentro de transação**: `approve-registration.ts` e `reject-registration.ts` (Etapa 1.5) gravam `*.processing_conflict` **dentro** da transação e em seguida lançam o erro — o rollback apaga o registro, então esses conflitos nunca são auditados de fato. Corrigido nos serviços da Etapa 1.9 (auditoria no `catch`, fora da transação); falta aplicar o mesmo padrão nos serviços de cadastro.
+- **Suíte E2E instável quando `registrations-public.spec.ts` e `registrations.spec.ts` rodam juntos**: cada uma passa isoladamente, mas em conjunto uma delas falha de forma intermitente (o alvo alterna). Causa provável: estado compartilhado dos usuários de seed entre as duas suítes (solicitação já aprovada/reprovada) somado ao tempo das Server Actions. Comportamento **anterior** à Etapa 1.9 (já observado na 1.8) e independente dela — as duas specs não foram alteradas. Precisa de fixtures próprias por spec, como fizeram as suítes mais novas.
+
 ## Escopo
 
 - Qual é o escopo definitivo do MVP?

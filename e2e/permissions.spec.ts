@@ -100,10 +100,10 @@ test.describe("administração de usuários é restrita ao escopo global", () =>
       ).toBeVisible();
       // Vê pessoas de organizações distintas — é uma visão de plataforma.
       await expect(
-        page.getByText("admstartup@dev.hubdigital.local"),
+        page.getByText("admstartup@dev.hubdigital.local").first(),
       ).toBeVisible();
       await expect(
-        page.getByText("admespaco@dev.hubdigital.local"),
+        page.getByText("admespaco@dev.hubdigital.local").first(),
       ).toBeVisible();
     });
   }

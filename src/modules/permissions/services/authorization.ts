@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveFeatureFlag } from "@/modules/feature-flags/services/resolve-flag";
 
 /**
  * Serviço central de autorização (camada de dados).
@@ -178,21 +179,16 @@ export async function hasAllPermissions(
 /**
  * Feature flag avaliada no servidor.
  * Override por organização tem precedência sobre a flag global.
+ *
+ * Delega para o serviço central (`src/modules/feature-flags/services/resolve-flag.ts`)
+ * — a regra de precedência existe em um único lugar.
  */
 export async function isFeatureEnabled(
   key: string,
   organizationId?: string | null,
 ): Promise<boolean> {
-  if (organizationId) {
-    const override = await prisma.featureFlag.findFirst({
-      where: { key, organizationId },
-    });
-    if (override) return override.enabled;
-  }
-  const global = await prisma.featureFlag.findFirst({
-    where: { key, organizationId: null },
-  });
-  return global?.enabled ?? false;
+  const resolved = await resolveFeatureFlag(key, organizationId ?? null);
+  return resolved.effective;
 }
 
 /**

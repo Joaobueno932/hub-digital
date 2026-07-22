@@ -21,6 +21,9 @@ export default function globalSetup() {
   psql("CREATE DATABASE hub_digital_e2e");
   execSync("npx prisma migrate deploy", { env, stdio: "inherit" });
   execSync("npx prisma db seed", { env, stdio: "inherit" });
-  // Garante build de produção atualizado para o webServer (`next start`).
-  execSync("npm run build", { env, stdio: "inherit" });
+  // O build NÃO acontece aqui: o Playwright sobe o `webServer` (`next start`)
+  // ANTES do globalSetup, então buildar neste ponto faria o servidor iniciar
+  // com o `.next` antigo e ainda ser sobrescrito por baixo — os IDs de Server
+  // Action deixavam de bater e as actions viravam no-op (POST 200 sem efeito).
+  // O build passou para o script `test:e2e`, antes do Playwright subir.
 }

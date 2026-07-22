@@ -75,6 +75,14 @@ Regras: não gerar logos artificiais; usar logo claro sobre `primary-dark` e esc
 - Mensagens de sucesso (`role=status`) e erro (`role=alert`) dentro do próprio diálogo/formulário; botões com estado de carregamento (`useActionState`).
 - Link de convite (recurso de desenvolvimento, sem envio real de e-mail) exibido como texto selecionável com rótulo explícito de que é temporário — nunca copiado automaticamente para a área de transferência sem ação do usuário.
 
+## Usuários e feature flags (Etapa 1.9)
+
+- Listagens (`/app/admin/usuarios`, `/app/admin/feature-flags`) seguem o padrão da Etapa 1.8: tabela em telas médias/grandes, **cards** em telas pequenas, filtros por `<form method="get">` e paginação por link.
+- Status da conta com **badge semântico** (ativo = success, suspenso = danger, pendente = warning, desativado = neutro) — nunca só a cor: o rótulo textual acompanha.
+- Suspensão exige **motivo** (mín. 10 caracteres) em confirmação por `<dialog>` nativo; reativação também confirma. Nunca `window.confirm`.
+- Campos não editáveis (e-mail) ficam `readOnly` com `aria-describedby` explicando o porquê, em vez de sumirem da tela.
+- Na tela de flags, cada linha mostra **global**, **organização**, **efetivo** e **origem** do valor — a origem é o que explica por que o efetivo diverge do global. Flags sensíveis exibem "Somente super administrador" no lugar dos controles.
+
 ## Padrões de layout
 
 - **Cabeçalho público**: logo horizontal, navegação principal (Quem somos, Startups, Serviços, Eventos, Planos, Vagas — rotas do CLAUDE.md), CTA "Entrar"/"Cadastre-se" em accent; colapsa em menu hambúrguer < 1024px.

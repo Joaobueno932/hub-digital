@@ -173,7 +173,7 @@ export const NAV_ITEMS: NavItem[] = [
       "roles.manage",
       "permissions.manage",
       "audit.view",
-      "feature-flags.manage",
+      "feature-flags.list",
     ],
   },
 

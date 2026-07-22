@@ -8,6 +8,8 @@ export const USERS = {
   admHub: "admhub@dev.hubdigital.local",
   admStartup: "admstartup@dev.hubdigital.local",
   admEspaco: "admespaco@dev.hubdigital.local",
+  equipeStartup: "equipestartup@dev.hubdigital.local",
+  contaSuspensa: "conta.suspensa@dev.hubdigital.local",
   multi: "multi@dev.hubdigital.local",
   comum: "comum@dev.hubdigital.local",
   onbNone: "onb.none@dev.hubdigital.local",
@@ -40,4 +42,11 @@ export async function login(
 ) {
   await loginRaw(page, email, password);
   await expect(page).toHaveURL(/\/app/);
+  // A navegação pós-login é client-side (`router.push` + `router.refresh`) e
+  // `toHaveURL` resolve assim que a URL muda — com a navegação ainda em voo,
+  // um `page.goto()` imediato a cancela e o Chromium reporta
+  // net::ERR_ABORTED. Esperar o shell autenticado renderizar garante que a
+  // navegação terminou. (`networkidle` não serve: o prefetch de RSC do Next
+  // mantém a rede ocupada e o estado nunca é atingido.)
+  await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
 }

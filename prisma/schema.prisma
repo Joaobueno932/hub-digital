@@ -19,16 +19,21 @@ enum UserStatus {
 }
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
-  name          String
-  email         String     @unique
-  emailVerified DateTime?
-  passwordHash  String?
-  image         String?
-  status        UserStatus @default(PENDING)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  deletedAt     DateTime?
+  id               String     @id @default(uuid()) @db.Uuid
+  name             String
+  email            String     @unique
+  emailVerified    DateTime?
+  passwordHash     String?
+  image            String?
+  status           UserStatus @default(PENDING)
+  // Suspensão administrativa (Etapa 1.9): motivo e responsável ficam em
+  // colunas próprias porque a tela de detalhe exibe "motivo e histórico".
+  suspendedAt      DateTime?
+  suspendedById    String?    @db.Uuid
+  suspensionReason String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
 
   accounts             Account[]
   sessions             Session[]
@@ -41,6 +46,9 @@ model User {
   files                FileAsset[]
   invitationsSent      OrganizationInvitation[] @relation("InvitedBy")
   invitationsAccepted  OrganizationInvitation[] @relation("AcceptedInvitation")
+  suspendedBy          User?                    @relation("UserSuspendedBy", fields: [suspendedById], references: [id])
+  suspendedUsers       User[]                   @relation("UserSuspendedBy")
+  featureFlagChanges   FeatureFlag[]            @relation("FeatureFlagUpdatedBy")
 
   @@index([status])
   @@map("users")
@@ -365,16 +373,22 @@ model Module {
   @@map("modules")
 }
 
+// `organizationId` nulo = valor GLOBAL; preenchido = override daquela
+// organização (que prevalece sobre o global). O unique abaixo garante que não
+// exista override duplicado. Ver src/modules/feature-flags/services/resolve-flag.ts.
 model FeatureFlag {
   id             String   @id @default(uuid()) @db.Uuid
   key            String
   enabled        Boolean  @default(false)
   organizationId String?  @db.Uuid
   description    String?
+  // Ator da última alteração (Etapa 1.9) — exibido na administração de flags.
+  updatedById    String?  @db.Uuid
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id])
+  updatedBy    User?         @relation("FeatureFlagUpdatedBy", fields: [updatedById], references: [id])
 
   @@unique([key, organizationId])
   @@map("feature_flags")
