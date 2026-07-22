@@ -13,6 +13,10 @@ export const USERS = {
   onbFlow: "onb.flow@dev.hubdigital.local",
   onbDraft: "onb.draft@dev.hubdigital.local",
   onbDone: "onb.done@dev.hubdigital.local",
+  reqStartupNew: "req.startup.new@dev.hubdigital.local",
+  reqEspacoNew: "req.espaco.new@dev.hubdigital.local",
+  reqPending: "req.pending@dev.hubdigital.local",
+  reqMobile: "req.mobile@dev.hubdigital.local",
 } as const;
 
 /** Login que apenas submete e aguarda sair da página de login (destino varia). */

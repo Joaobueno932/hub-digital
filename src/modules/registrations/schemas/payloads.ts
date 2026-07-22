@@ -12,12 +12,27 @@ export const userPayloadSchema = z.object({
   contactPhone: z.string().optional(),
 });
 
+// Campos novos ficam OPCIONAIS para preservar compatibilidade com payloads
+// legados/seed e não alterar o fluxo de aprovação (que usa apenas
+// organizationName/contactName/contactEmail). O formulário público usa um
+// schema de submissão mais estrito (ver schemas/submission.ts).
 export const organizationPayloadSchema = z.object({
   organizationName: z.string().min(2),
   contactName: z.string().min(1),
   contactEmail: z.email(),
   contactPhone: z.string().optional(),
   description: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  website: z.string().optional(),
+  stage: z.string().optional(), // apenas STARTUP
+  institution: z.string().optional(), // apenas ESPACO_INOVACAO
+  // Metadados administrativos/derivados pelo servidor (nunca do frontend livre).
+  source: z.string().optional(),
+  schemaVersion: z.number().optional(),
+  acceptedTermsVersion: z.string().optional(),
+  acceptedPrivacyVersion: z.string().optional(),
+  acceptedAt: z.string().optional(),
 });
 
 export type UserPayload = z.infer<typeof userPayloadSchema>;

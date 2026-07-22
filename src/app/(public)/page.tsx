@@ -115,6 +115,49 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="border-t border-black/5 bg-background">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <h2 className="text-2xl font-bold text-primary md:text-3xl">
+            Faça parte do ecossistema
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            Envie uma solicitação para ingressar no Hub Digital. Após o envio, a
+            equipe analisa o pedido antes da aprovação.
+          </p>
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            <article className="flex flex-col rounded-xl bg-surface p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-primary">
+                Sou uma startup
+              </h3>
+              <p className="mt-2 flex-1 text-sm text-muted">
+                Cadastre a sua startup para participar dos programas e da
+                comunidade do Hub.
+              </p>
+              <Link
+                href="/cadastro/startup"
+                className="mt-4 inline-block rounded-md bg-accent px-5 py-2.5 text-center font-semibold text-foreground-inverse hover:bg-accent-hover"
+              >
+                Solicitar cadastro de startup
+              </Link>
+            </article>
+            <article className="flex flex-col rounded-xl bg-surface p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-primary">
+                Represento um espaço de inovação
+              </h3>
+              <p className="mt-2 flex-1 text-sm text-muted">
+                Cadastre o seu espaço de inovação e conecte-se ao ecossistema.
+              </p>
+              <Link
+                href="/cadastro/espaco-inovacao"
+                className="mt-4 inline-block rounded-md border border-primary px-5 py-2.5 text-center font-semibold text-primary hover:bg-primary/5"
+              >
+                Solicitar cadastro de espaço
+              </Link>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-primary">
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-16 md:grid-cols-2">
           <div className="text-foreground-inverse">

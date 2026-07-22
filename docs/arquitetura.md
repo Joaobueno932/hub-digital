@@ -69,6 +69,13 @@ Cada módulo: `components/ actions/ services/ repositories/ schemas/ permissions
 - Entidades por tipo: USER → ativa o usuário; STARTUP → Organization(STARTUP) + Membership + ADM_STARTUP; ESPACO_INOVACAO → Organization(ESPACO_INOVACAO) + Membership + ADM_ESPACO_INOVACAO. Nenhum plano é associado.
 - Payload inválido/legado: aprovação bloqueada com estado seguro na UI; reprovação continua possível.
 
+### Solicitações institucionais públicas (Etapa 1.7)
+
+- Rotas `/cadastro/startup`, `/cadastro/espaco-inovacao`, `/cadastro/enviado` (exigem sessão; `getCurrentUser` → redirect login) e `/app/minhas-solicitacoes` (lista escopada por sessão). Páginas legais `/termos` e `/politica-privacidade` (provisórias).
+- Formulários com **React Hook Form + Zod** (`schemas/submission.ts`) validando client e servidor. Submissão via Server Actions (`submitStartupRequestAction`/`submitInnovationSpaceRequestAction`) — o **tipo vem da action**, nunca do cliente.
+- Serviço `submit-registration.ts`: rate limit (usuário + IP anonimizado) → validação Zod → honeypot → advisory lock transacional → checagem de duplicidade → cria `RegistrationRequest` PENDING (nunca cria organização/vínculo) → auditoria → notifica admins. Alimenta o fluxo administrativo existente de aprovação/reprovação.
+- Payload público é compatível com `organizationPayloadSchema`, então a aprovação segue criando organização + vínculo (ADM_STARTUP/ADM_ESPACO_INOVACAO) sem alterações.
+
 ### Testes E2E (Playwright)
 
 - `npm run test:e2e` — exige `docker compose up -d`. O global-setup reseta o banco dedicado `hub_digital_e2e` (`prisma migrate reset` + seed) e faz o build; o `webServer` sobe `next start` na porta 3100 com `DATABASE_URL` própria. Var opcional `E2E_DATABASE_URL` sobrescreve a URL do banco de teste.

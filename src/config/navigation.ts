@@ -43,6 +43,12 @@ export const NAV_ITEMS: NavItem[] = [
     requiresOrganization: true,
   },
   {
+    label: "Minhas solicitações",
+    icon: "FileText",
+    href: "/app/minhas-solicitacoes",
+    group: "geral",
+  },
+  {
     label: "Membros",
     icon: "Users",
     href: "/app/membros",

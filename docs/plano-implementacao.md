@@ -8,7 +8,7 @@ Fase 1 dividida em etapas pequenas. Cada etapa: objetivo, dependências, entreg�
 - **Dependências:** versões atuais confirmadas (Context7).
 - **Entregáveis:** app rodando, ESLint/Prettier, `docker-compose.yml` (PostgreSQL com healthcheck e volume), `.env.example`, tokens CSS/Tailwind.
 - **CA:** `npm run dev`, `lint`, `typecheck`, `build` passam; banco sobe com `docker compose up`.
-- **Testes:** smoke de build. **Riscos:** divergência de versões. 
+- **Testes:** smoke de build. **Riscos:** divergência de versões.
 
 ## Etapa 1.2 — Prisma e modelo de dados
 
@@ -74,6 +74,8 @@ Fase 1 dividida em etapas pequenas. Cada etapa: objetivo, dependências, entreg�
 
 - **Objetivo:** typecheck, lint, testes, build, Playwright dos fluxos principais, revisão de segurança, README completo.
 - **CA:** critérios de conclusão da Fase 1 do CLAUDE.md atendidos; relatório com resultados reais.
+
+> **Etapa 1.7 concluída em 2026-07-22**: formulários públicos de solicitação de Startup e Espaço de Inovação (RHF + Zod), exigindo autenticação; serviço de submissão com rate limiting (usuário + IP anonimizado), honeypot, advisory lock transacional para duplicidade/concorrência, auditoria e notificação de administradores; página de sucesso; "Minhas solicitações"; páginas legais provisórias; compatível com a aprovação existente (payload compartilhado). Sem migration. Testes unit/integração/Playwright.
 
 ## Fases futuras (resumo)
 

@@ -15,7 +15,7 @@ Este documento registra decisões técnicas confirmadas ou propostas para o dese
 
 ## Decisões da Etapa 1.4 (2026-07-21)
 
-1. **Organização ativa**: persistida em cookie `hub.active-org` (httpOnly, SameSite=Lax, Secure em produção) contendo apenas o ID *preferido*. O cookie nunca autoriza nada: a cada request o valor é revalidado contra os vínculos ativos do usuário (`resolveActiveMembership`); se inválido, aplica-se fallback para o primeiro vínculo válido. A troca só ocorre via server action que valida o vínculo, grava auditoria (`organization.switched`), invalida o cache do layout e redireciona para `/app`. localStorage não é usado.
+1. **Organização ativa**: persistida em cookie `hub.active-org` (httpOnly, SameSite=Lax, Secure em produção) contendo apenas o ID _preferido_. O cookie nunca autoriza nada: a cada request o valor é revalidado contra os vínculos ativos do usuário (`resolveActiveMembership`); se inválido, aplica-se fallback para o primeiro vínculo válido. A troca só ocorre via server action que valida o vínculo, grava auditoria (`organization.switched`), invalida o cache do layout e redireciona para `/app`. localStorage não é usado.
 2. **Escopo global**: SUPER_ADMIN (qualquer vínculo ativo) tem todas as permissões; papéis de vínculos em organização do tipo HUB (ex.: ADM_HUB) têm escopo global para as permissões que possuem. Regra centralizada em `src/modules/permissions/services/authorization.ts` e coberta por testes de integração.
 3. **Duas camadas de autorização**: camada de dados (`authorization.ts`, por userId/orgId, testável) e wrappers de sessão (`src/lib/authz.ts`: `requireSessionContext`, `requirePermission`, `requireAnyPermission`, `requireActiveOrganization`), com cache por request (`React.cache`).
 4. **Menu**: configuração declarativa em `src/config/navigation.ts`; filtro server-side por permissão, feature flag, tipo de organização e vínculo. Ocultar item não substitui a autorização da rota — toda página chama `requirePermission`/`requireSessionContext`.
@@ -44,6 +44,18 @@ Este documento registra decisões técnicas confirmadas ou propostas para o dese
 7. **Redirecionamento pós-login** centralizado em `resolvePostLoginRedirect` (serviço) + action `resolvePostLoginRedirectAction`: sem onboarding/DRAFT → `/app/onboarding`; COMPLETED → `/app`. `callbackUrl` (rota protegida) tem precedência. Usuários do seed usados em E2E ficam COMPLETED para não alterar os testes existentes.
 8. **Formulários**: usados Server Actions + `useActionState` + form nativo (consistente com login/cadastro/decisão), sem React Hook Form — o onboarding é um único radiogroup, e RHF não agregaria valor. Registrado por transparência (CLAUDE.md lista RHF como stack preferencial; adotado onde houver formulários complexos).
 9. **ESLint**: adicionado `argsIgnorePattern/varsIgnorePattern: "^_"` (convenção idiomática para parâmetros intencionalmente não usados, ex.: assinatura `(prevState, formData)` do `useActionState`) e ignore de `src/generated/**`. Não é enfraquecimento de regra.
+
+## Decisões da Etapa 1.7 — Solicitações institucionais (2026-07-22)
+
+1. **Conta do solicitante**: envio institucional (startup/espaço) **exige autenticação**; `requesterId` = usuário da sessão. Justificativa: a aprovação só cria vínculo (`membership`) quando há `requesterId`; permitir envio anônimo impediria a concessão de acesso na aprovação. `userId`/`type` do formulário são ignorados — o tipo vem da rota/action.
+2. **Schemas**: `organizationPayloadSchema` (fonte de verdade da aprovação) ganhou campos novos **opcionais** (`city/state/website/stage/institution/source/schemaVersion/aceites`) para não quebrar payloads legados/seed nem a aprovação. Os formulários usam `schemas/submission.ts` (estrito) que produz um payload compatível. Sem duplicação de vocabulário.
+3. **Duplicidade/concorrência**: bloqueia nova solicitação do mesmo tipo por usuário (PENDING/APPROVED/REJECTED), sem reabertura silenciosa. Garantia por **advisory lock transacional** (`pg_advisory_xact_lock(hashtext(user:type))`) em vez de índice único parcial — escolhido para **não conflitar com o dataset de seed/testes** existente (que tem múltiplos PENDING por usuário em cenários legados). Índice parcial fica como endurecimento futuro.
+4. **Sem migration**: payload é JSONB (recebe os campos novos); `submittedAt` = `createdAt`; `source`/`schemaVersion` no payload. Nada novo no schema.
+5. **Rate limiting**: por usuário (5/min) e por IP anonimizado (10/min) — `checkRateLimit` em memória (dev). IP tem último octeto zerado e é apenas hasheado como chave efêmera; **IP bruto nunca é persistido**.
+6. **Anti-abuso**: honeypot (campo `companyWebsite` oculto/acessível que deve ficar vazio — validado client+server), normalização de whitespace, limites de tamanho, rejeição de URL inválida. **Min-time não implementado** (conflitaria com E2E rápido) — registrado como possível endurecimento.
+7. **Privacidade**: páginas `/termos` e `/politica-privacidade` provisórias (claramente marcadas como conteúdo a validar). Persistimos apenas `acceptedTermsVersion`/`acceptedPrivacyVersion`/`acceptedAt` no payload — nunca o texto integral.
+8. **Notificação administrativa**: ao submeter, notifica membros ativos de organização HUB com papel ADM_HUB/SUPER_ADMIN (poucos destinatários). Sem e-mail real.
+9. **Auditoria**: `registration_request.submitted/submission_conflict/rate_limited/invalid_payload` com metadados seguros (tipo, status, source, schemaVersion, existingStatus) — sem payload completo, telefone, termos ou IP.
 
 ## Status das decisões
 

@@ -8,16 +8,16 @@ Nota da auditoria: o Figma MCP não estava autenticado; esta versão baseia-se e
 
 Fonte: `public/assets.json` e `docs/design/tokens.json`.
 
-| Token semântico | Valor | Uso |
-|---|---|---|
-| `--color-primary` | `#182F4F` | Cor institucional, cabeçalhos, superfícies de marca |
-| `--color-primary-dark` | `#0C1B2A` | Fundo escuro, rodapé, hero |
-| `--color-secondary` | `#BCCE2D` | Destaques secundários, badges, detalhes gráficos |
-| `--color-accent` | `#E85D04` | Botões primários, CTAs, links de ação |
-| `--color-background` | `#EAEAEA` | Fundo neutro claro |
-| `--color-surface` | `#FFFFFF` | Cartões, modais, campos |
-| `--color-foreground` | `#0C1B2A` | Texto sobre fundo claro |
-| `--color-foreground-inverse` | `#FFFFFF` | Texto sobre fundo escuro |
+| Token semântico              | Valor     | Uso                                                 |
+| ---------------------------- | --------- | --------------------------------------------------- |
+| `--color-primary`            | `#182F4F` | Cor institucional, cabeçalhos, superfícies de marca |
+| `--color-primary-dark`       | `#0C1B2A` | Fundo escuro, rodapé, hero                          |
+| `--color-secondary`          | `#BCCE2D` | Destaques secundários, badges, detalhes gráficos    |
+| `--color-accent`             | `#E85D04` | Botões primários, CTAs, links de ação               |
+| `--color-background`         | `#EAEAEA` | Fundo neutro claro                                  |
+| `--color-surface`            | `#FFFFFF` | Cartões, modais, campos                             |
+| `--color-foreground`         | `#0C1B2A` | Texto sobre fundo claro                             |
+| `--color-foreground-inverse` | `#FFFFFF` | Texto sobre fundo escuro                            |
 
 Derivados (propostos, gerar com escala): estados hover/active do accent (`#C94F03` aprox.), feedback `success`/`warning`/`danger`/`info` — pendente de validação visual; não usar hex solto em componentes, sempre via token (CSS vars mapeadas no Tailwind).
 
@@ -60,6 +60,12 @@ Regras: não gerar logos artificiais; usar logo claro sobre `primary-dark` e esc
 - Cada opção: título, descrição curta, área clicável ampla (label envolve o cartão).
 - Botões: "Continuar", "Salvar e continuar depois" (desabilitados sem seleção), "Voltar", "Finalizar". Finalização com **confirmação em `<dialog>` nativo** (foco preso, ESC), nunca `window.confirm`.
 - Mensagens de sucesso (`role=status`) e erro (`role=alert`); estados de loading nos botões.
+
+## Solicitações institucionais (Etapa 1.7)
+
+- Formulários (`/cadastro/startup`, `/cadastro/espaco-inovacao`) com React Hook Form: campos com `label` associado, asterisco de obrigatório com `aria-hidden`, `aria-invalid`/`aria-describedby` nos erros, foco no primeiro inválido (RHF), preservação dos dados após erro, estado de loading no botão.
+- **Honeypot** (`companyWebsite`) em contêiner fora da tela (`left:-9999px`), com `tabindex=-1` e rótulo — invisível para humanos, presente para bots.
+- Consentimentos em `fieldset`/`legend` com links para `/termos` e `/politica-privacidade`. Estados: erro (alert), conflito (mensagem segura sobre solicitação existente), sucesso (`/cadastro/enviado`). "Minhas solicitações" com tabela responsiva (scroll-x), badges de status e estado vazio.
 
 ## Padrões de layout
 

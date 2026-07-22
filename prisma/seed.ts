@@ -530,6 +530,190 @@ async function main() {
     }
   }
 
+  // --- Solicitações institucionais (Etapa 1.7) ---
+  // Usuários dedicados, com onboarding concluído (não vão ao onboarding no login).
+  async function makeRequestUser(email: string, name: string) {
+    const u = await prisma.user.upsert({
+      where: { email },
+      update: { status: "ACTIVE" },
+      create: {
+        email,
+        name,
+        passwordHash,
+        status: "ACTIVE",
+        emailVerified: new Date(),
+      },
+    });
+    await prisma.onboardingProfile.upsert({
+      where: { userId: u.id },
+      update: {},
+      create: {
+        userId: u.id,
+        status: "COMPLETED",
+        selectedStage: "HAVE_STARTUP_OR_COMPANY",
+        completedAt: new Date(),
+      },
+    });
+    return u;
+  }
+
+  async function makeRequest(
+    marker: string,
+    data: Parameters<typeof prisma.registrationRequest.create>[0]["data"],
+  ) {
+    const exists = await prisma.registrationRequest.findFirst({
+      where: { payload: { path: ["seedMarker"], equals: marker } },
+    });
+    if (!exists) await prisma.registrationRequest.create({ data });
+  }
+
+  const reqAdmHub = await prisma.user.findUniqueOrThrow({
+    where: { email: "admhub@dev.hubdigital.local" },
+  });
+  const reqStartupNew = await makeRequestUser(
+    "req.startup.new@dev.hubdigital.local",
+    "Solicitante Startup",
+  );
+  const reqEspacoNew = await makeRequestUser(
+    "req.espaco.new@dev.hubdigital.local",
+    "Solicitante Espaço",
+  );
+  const reqMobile = await makeRequestUser(
+    "req.mobile@dev.hubdigital.local",
+    "Solicitante Mobile",
+  );
+  void reqMobile;
+  const reqPending = await makeRequestUser(
+    "req.pending@dev.hubdigital.local",
+    "Solicitante Pendente",
+  );
+  const reqApproved = await makeRequestUser(
+    "req.approved@dev.hubdigital.local",
+    "Solicitante Aprovado",
+  );
+  const reqRejected = await makeRequestUser(
+    "req.rejected@dev.hubdigital.local",
+    "Solicitante Reprovado",
+  );
+  void reqStartupNew;
+  void reqEspacoNew;
+
+  const orgContact = {
+    contactName: "Solicitante Pendente",
+    contactEmail: "req.pending@dev.hubdigital.local",
+    city: "Campo Grande",
+    state: "MS",
+    source: "public_form",
+    schemaVersion: 1,
+  };
+
+  // Usuário com dois tipos distintos PENDENTES (permitido).
+  await makeRequest("req-pending-startup", {
+    type: "STARTUP",
+    requesterId: reqPending.id,
+    payload: {
+      seedMarker: "req-pending-startup",
+      organizationName: "Startup Pendente Demo",
+      description: "Startup de demonstração em análise.",
+      stage: "HAVE_IDEA_AND_TEAM",
+      ...orgContact,
+    },
+    status: "PENDING",
+  });
+  await makeRequest("req-pending-espaco", {
+    type: "ESPACO_INOVACAO",
+    requesterId: reqPending.id,
+    payload: {
+      seedMarker: "req-pending-espaco",
+      organizationName: "Espaço Pendente Demo",
+      description: "Espaço de inovação em análise.",
+      institution: "Instituição Demo",
+      ...orgContact,
+    },
+    status: "PENDING",
+  });
+
+  // Solicitação APROVADA, com organização e vínculo resultantes.
+  const approvedOrg = await prisma.organization.upsert({
+    where: { slug: "startup-aprovada-demo" },
+    update: { status: "ACTIVE" },
+    create: {
+      name: "Startup Aprovada Demo",
+      slug: "startup-aprovada-demo",
+      typeId: typeByCode["STARTUP"],
+      status: "ACTIVE",
+      createdById: reqAdmHub.id,
+    },
+  });
+  const approvedMembership = await prisma.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: reqApproved.id,
+        organizationId: approvedOrg.id,
+      },
+    },
+    update: { status: "ACTIVE" },
+    create: {
+      userId: reqApproved.id,
+      organizationId: approvedOrg.id,
+      status: "ACTIVE",
+    },
+  });
+  const admStartupRole = await prisma.role.findUniqueOrThrow({
+    where: { code: "ADM_STARTUP" },
+  });
+  await prisma.membershipRole.upsert({
+    where: {
+      membershipId_roleId: {
+        membershipId: approvedMembership.id,
+        roleId: admStartupRole.id,
+      },
+    },
+    update: {},
+    create: { membershipId: approvedMembership.id, roleId: admStartupRole.id },
+  });
+  await makeRequest("req-approved-startup", {
+    type: "STARTUP",
+    requesterId: reqApproved.id,
+    payload: {
+      seedMarker: "req-approved-startup",
+      organizationName: "Startup Aprovada Demo",
+      description: "Startup de demonstração já aprovada.",
+      contactName: "Solicitante Aprovado",
+      contactEmail: "req.approved@dev.hubdigital.local",
+      city: "Dourados",
+      state: "MS",
+      source: "public_form",
+      schemaVersion: 1,
+    },
+    status: "APPROVED",
+    decidedById: reqAdmHub.id,
+    decidedAt: new Date(),
+    resultingOrganizationId: approvedOrg.id,
+    resultingMembershipId: approvedMembership.id,
+  });
+
+  // Solicitação REPROVADA, com justificativa.
+  await makeRequest("req-rejected-espaco", {
+    type: "ESPACO_INOVACAO",
+    requesterId: reqRejected.id,
+    payload: {
+      seedMarker: "req-rejected-espaco",
+      organizationName: "Espaço Reprovado Institucional",
+      description: "Espaço de demonstração reprovado.",
+      contactName: "Solicitante Reprovado",
+      contactEmail: "req.rejected@dev.hubdigital.local",
+      city: "Três Lagoas",
+      state: "MS",
+      source: "public_form",
+      schemaVersion: 1,
+    },
+    status: "REJECTED",
+    decidedById: reqAdmHub.id,
+    decidedAt: new Date(),
+    decisionReason: "Dados insuficientes para análise (demonstração).",
+  });
+
   const plans = [
     {
       name: "Plano Comunidade",
@@ -571,13 +755,20 @@ async function main() {
     where: { email: "comum@dev.hubdigital.local" },
   });
 
-  const pendingCount = await prisma.registrationRequest.count();
-  if (pendingCount === 0) {
+  // Idempotente por seedMarker (não depender de contagem global — outros
+  // blocos criam solicitações antes deste ponto).
+  const horizonteExists = await prisma.registrationRequest.findFirst({
+    where: {
+      payload: { path: ["seedMarker"], equals: "seed-startup-horizonte" },
+    },
+  });
+  if (!horizonteExists) {
     await prisma.registrationRequest.create({
       data: {
         type: "STARTUP",
         requesterId: comum.id,
         payload: {
+          seedMarker: "seed-startup-horizonte",
           organizationName: "Startup Horizonte",
           contactName: "Usuário Comum",
           contactEmail: "comum@dev.hubdigital.local",
@@ -586,10 +777,16 @@ async function main() {
         status: "PENDING",
       },
     });
+  }
+  const norteExists = await prisma.registrationRequest.findFirst({
+    where: { payload: { path: ["seedMarker"], equals: "seed-espaco-norte" } },
+  });
+  if (!norteExists) {
     await prisma.registrationRequest.create({
       data: {
         type: "ESPACO_INOVACAO",
         payload: {
+          seedMarker: "seed-espaco-norte",
           organizationName: "Espaço Inovação Norte",
           contactName: "Solicitante Externo",
           contactEmail: "espaco.norte@dev.hubdigital.local",

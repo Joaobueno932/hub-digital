@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/authz";
 import { getRegistrationRequest } from "@/modules/registrations/services/registration-requests";
 import { parseRegistrationPayload } from "@/modules/registrations/schemas/payloads";
+import { getStageOption } from "@/modules/onboarding/config/stages";
 import { DecisionPanel } from "@/modules/registrations/components/decision-panel";
 import { z } from "zod";
 
@@ -91,6 +92,38 @@ export default async function CadastroDetalhePage({
               <div>
                 <dt className="font-medium text-muted">Telefone</dt>
                 <dd className="mt-1">{parsed.data.contactPhone}</dd>
+              </div>
+            ) : null}
+            {"institution" in parsed.data && parsed.data.institution ? (
+              <div>
+                <dt className="font-medium text-muted">Instituição</dt>
+                <dd className="mt-1">{parsed.data.institution}</dd>
+              </div>
+            ) : null}
+            {"stage" in parsed.data && parsed.data.stage ? (
+              <div>
+                <dt className="font-medium text-muted">Estágio</dt>
+                <dd className="mt-1">
+                  {getStageOption(parsed.data.stage as never)?.title ??
+                    parsed.data.stage}
+                </dd>
+              </div>
+            ) : null}
+            {"city" in parsed.data && parsed.data.city ? (
+              <div>
+                <dt className="font-medium text-muted">Cidade / UF</dt>
+                <dd className="mt-1">
+                  {parsed.data.city}
+                  {"state" in parsed.data && parsed.data.state
+                    ? ` / ${parsed.data.state}`
+                    : ""}
+                </dd>
+              </div>
+            ) : null}
+            {"website" in parsed.data && parsed.data.website ? (
+              <div>
+                <dt className="font-medium text-muted">Site / rede social</dt>
+                <dd className="mt-1 break-all">{parsed.data.website}</dd>
               </div>
             ) : null}
             {"description" in parsed.data && parsed.data.description ? (

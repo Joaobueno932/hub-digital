@@ -33,6 +33,21 @@ Este documento registra dúvidas e decisões que precisam ser confirmadas antes 
 - Haverá **recomendações automáticas** a partir do estágio?
 - Qual equipe poderá **consultar resultados agregados** de onboarding?
 
+## Adicionadas na Etapa 1.7 — Solicitações institucionais (2026-07-22)
+
+- Solicitação institucional **exige conta**? (Adotado: sim, requer autenticação.)
+- Haverá **confirmação de e-mail** antes da análise?
+- **Telefone** é obrigatório? (Adotado: opcional; origem story maps.)
+- **CNPJ** será obrigatório? Serão exigidos **documentos**?
+- Solicitação **rejeitada poderá ser corrigida/reenviada**? (Hoje bloqueado, sem reabertura.)
+- Qual **prazo de análise** poderá ser divulgado? (Hoje nenhum prazo é prometido.)
+- Quais administradores recebem notificação? (Adotado: ADM_HUB/SUPER_ADMIN do Hub.)
+- **Termos e política definitivos** (LGPD): responsável pelo tratamento, retenção, canais.
+- **Consentimento de marketing** será separado dos termos?
+- Como tratar **solicitações duplicadas por organização já existente** (mesmo CNPJ/nome)?
+- **Convite/ativação** para solicitante aprovado sem conta (não implementado nesta fase).
+- Endurecimento anti-abuso: tempo mínimo de submissão e índice único parcial (hoje advisory lock).
+
 ## Escopo
 
 - Qual é o escopo definitivo do MVP?

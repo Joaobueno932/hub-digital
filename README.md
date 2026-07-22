@@ -18,8 +18,13 @@ Implementado e validado:
 - **Etapa 1.5 concluída:** gestão de solicitações de cadastro em `/app/admin/cadastros` — listagem com resumo por status, busca, filtros, paginação server-side; página de detalhes com payload validado por Zod (payload legado cai em estado seguro); aprovação transacional que cria organização + vínculo + papel (ADM_STARTUP/ADM_ESPACO_INOVACAO) ou ativa o usuário; reprovação com justificativa obrigatória; idempotência e proteção contra concorrência (OCC por status); bloqueio de autoaprovação; notificações internas e auditoria completas.
 - **Playwright configurado** com banco E2E dedicado (`hub_digital_e2e`): suítes de autenticação, organização ativa, permissões, decisões de cadastro e onboarding.
 - **Etapa 1.6 concluída:** onboarding persistente do usuário (classificação em 5 estágios) com rascunho, retomada, revisão e conclusão idempotente; estados NOT_STARTED/DRAFT/COMPLETED; redirecionamento pós-login centralizado (`/app/entrada`); card de estado no dashboard; auditoria e notificação. Sem cálculo de maturidade nem recomendações (fora de escopo).
+- **Etapa 1.7 concluída:** formulários públicos de solicitação de Startup (`/cadastro/startup`) e Espaço de Inovação (`/cadastro/espaco-inovacao`) com React Hook Form + Zod, exigindo autenticação; serviço de submissão com rate limiting (usuário + IP anonimizado), honeypot, advisory lock transacional (duplicidade/concorrência), auditoria e notificação de administradores; página de sucesso (`/cadastro/enviado`); "Minhas solicitações" (`/app/minhas-solicitacoes`); páginas legais provisórias (`/termos`, `/politica-privacidade`). Alimenta o fluxo de aprovação existente (payload compartilhado), sem criar organização antes da aprovação.
 
-Ainda não implementado (ver [docs/plano-implementacao.md](docs/plano-implementacao.md)): ações de aprovação/reprovação de cadastros, fluxo de onboarding, edição de organizações/membros, gerenciamento de feature flags (UI), verificação de e-mail/reset de senha com envio real, Playwright.
+Ainda não implementado (ver [docs/plano-implementacao.md](docs/plano-implementacao.md)): edição de organizações/membros, gerenciamento de feature flags (UI), verificação de e-mail/reset de senha com envio real, convite para solicitante aprovado sem conta.
+
+### Solicitações institucionais (Etapa 1.7)
+
+Interessados autenticados enviam solicitações de Startup ou Espaço de Inovação, que entram como **PENDING** e são analisadas em `/app/admin/cadastros`. Não há aprovação automática nem criação de organização no envio. Proteções: rate limiting, honeypot, bloqueio de solicitação duplicada do mesmo tipo por usuário (advisory lock). Termos/política são provisórios; apenas a versão aceita e o timestamp são persistidos. Usuários de seed para testes: `req.startup.new`, `req.espaco.new`, `req.pending` (com startup+espaço pendentes), `req.approved`, `req.rejected`, `req.mobile` (senha padrão do seed).
 
 ## Stack
 
@@ -68,25 +73,25 @@ O global-setup recria o banco **dedicado** `hub_digital_e2e` no mesmo container 
 
 Senha de todos os usuários do seed: `HubDigital@dev1`
 
-| Perfil | E-mail |
-|---|---|
-| SUPER_ADMIN | superadmin@dev.hubdigital.local |
-| ADM_HUB | admhub@dev.hubdigital.local |
-| ADM_ESPACO_INOVACAO | admespaco@dev.hubdigital.local |
-| USUARIO_ESPACO_INOVACAO | usuarioespaco@dev.hubdigital.local |
-| ADM_STARTUP | admstartup@dev.hubdigital.local |
-| USUARIO_EQUIPE_STARTUP | equipestartup@dev.hubdigital.local |
-| USUARIO_COMUM | comum@dev.hubdigital.local |
-| Multiorganização (USUARIO_ESPACO_INOVACAO no Espaço + ADM_STARTUP na startup) | multi@dev.hubdigital.local |
+| Perfil                                                                        | E-mail                             |
+| ----------------------------------------------------------------------------- | ---------------------------------- |
+| SUPER_ADMIN                                                                   | superadmin@dev.hubdigital.local    |
+| ADM_HUB                                                                       | admhub@dev.hubdigital.local        |
+| ADM_ESPACO_INOVACAO                                                           | admespaco@dev.hubdigital.local     |
+| USUARIO_ESPACO_INOVACAO                                                       | usuarioespaco@dev.hubdigital.local |
+| ADM_STARTUP                                                                   | admstartup@dev.hubdigital.local    |
+| USUARIO_EQUIPE_STARTUP                                                        | equipestartup@dev.hubdigital.local |
+| USUARIO_COMUM                                                                 | comum@dev.hubdigital.local         |
+| Multiorganização (USUARIO_ESPACO_INOVACAO no Espaço + ADM_STARTUP na startup) | multi@dev.hubdigital.local         |
 
 Todos os usuários acima têm o **onboarding concluído** (para não afetar os fluxos que vão direto ao painel). Usuários dedicados aos testes de onboarding (mesma senha):
 
-| Estado do onboarding | E-mail | Finalidade |
-|---|---|---|
-| Não iniciado | onb.none@dev.hubdigital.local | Redirecionamento e validação (sem perfil) |
-| Não iniciado | onb.flow@dev.hubdigital.local | Fluxo completo E2E (é alterado pelos testes) |
-| Rascunho (Tenho uma ideia) | onb.draft@dev.hubdigital.local | Retomada do rascunho salvo |
-| Concluído (Tenho um time e uma solução…) | onb.done@dev.hubdigital.local | Estado concluído / imutável |
+| Estado do onboarding                     | E-mail                         | Finalidade                                   |
+| ---------------------------------------- | ------------------------------ | -------------------------------------------- |
+| Não iniciado                             | onb.none@dev.hubdigital.local  | Redirecionamento e validação (sem perfil)    |
+| Não iniciado                             | onb.flow@dev.hubdigital.local  | Fluxo completo E2E (é alterado pelos testes) |
+| Rascunho (Tenho uma ideia)               | onb.draft@dev.hubdigital.local | Retomada do rascunho salvo                   |
+| Concluído (Tenho um time e uma solução…) | onb.done@dev.hubdigital.local  | Estado concluído / imutável                  |
 
 O seed também cria: organizações (Hub Digital, Espaço de Inovação Centro, Startup Demo Aurora), papéis e permissões da Fase 1, planos de demonstração, solicitações de cadastro (pendentes/aprovada/reprovada/autoaprovação/payload inválido), perfis de onboarding, notificações e registros de auditoria.
 

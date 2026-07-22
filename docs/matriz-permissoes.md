@@ -8,27 +8,27 @@ Escopo: permissões de AE/UE valem apenas na organização (espaço) do vínculo
 
 ## Portal / plataforma
 
-| Permissão (code) | SA | AH | AE | UE | AS | US | UC | Origem |
-|---|---|---|---|---|---|---|---|---|
-| users.list | ✓ | ✓ | ✓(escopo) | – | – | – | – | C (US-04) |
-| users.view | ✓ | ✓ | ✓(escopo) | – | ✓(escopo) | – | – | P |
-| users.create | ✓ | ✓ | ✓(escopo) | – | – | – | – | C (US-01) |
-| users.update | ✓ | ✓ | ✓(escopo) | – | – | – | – | C (US-02) |
-| users.deactivate | ✓ | ✓ | ✓(escopo) | – | – | – | – | C (US-03, como exclusão lógica — V para escopo exato) |
-| registrations.list / view | ✓ | ✓ | – | – | – | – | – | C (story map AH) |
-| registrations.approve / reject | ✓ | ✓ | – | – | – | – | – | C (US-07/08) |
-| organizations.list / view | ✓ | ✓ | – | – | – | – | – | P |
-| organizations.create / update | ✓ | ✓ | – | – | – | – | – | P (V: quem cria organizações?) |
-| organizations.update.own | – | – | ✓ | – | ✓ | – | – | P |
-| members.manage (vínculos e papéis na própria org) | ✓ | ✓ | ✓ | – | ✓ | – | – | C parcial (US-16 AE solicita cadastro; CLAUDE.md) |
-| roles.manage / permissions.manage | ✓ | ✓ | – | – | – | – | – | P (V: AE cria papéis personalizados?) |
-| plans.manage | ✓ | ✓ | – | – | – | – | – | C (US-15) |
-| plans.view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | C |
-| feature-flags.manage | ✓ | ✓ | – | – | – | – | – | P |
-| audit.view | ✓ | ✓ | – | – | – | – | – | P |
-| notifications.view.own | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | P |
-| onboarding.complete.own | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | C (GP US-03) |
-| dashboard.view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓* | C (painéis por perfil; *UC limitado — V) |
+| Permissão (code)                                  | SA  | AH  | AE        | UE  | AS        | US  | UC  | Origem                                                |
+| ------------------------------------------------- | --- | --- | --------- | --- | --------- | --- | --- | ----------------------------------------------------- |
+| users.list                                        | ✓   | ✓   | ✓(escopo) | –   | –         | –   | –   | C (US-04)                                             |
+| users.view                                        | ✓   | ✓   | ✓(escopo) | –   | ✓(escopo) | –   | –   | P                                                     |
+| users.create                                      | ✓   | ✓   | ✓(escopo) | –   | –         | –   | –   | C (US-01)                                             |
+| users.update                                      | ✓   | ✓   | ✓(escopo) | –   | –         | –   | –   | C (US-02)                                             |
+| users.deactivate                                  | ✓   | ✓   | ✓(escopo) | –   | –         | –   | –   | C (US-03, como exclusão lógica — V para escopo exato) |
+| registrations.list / view                         | ✓   | ✓   | –         | –   | –         | –   | –   | C (story map AH)                                      |
+| registrations.approve / reject                    | ✓   | ✓   | –         | –   | –         | –   | –   | C (US-07/08)                                          |
+| organizations.list / view                         | ✓   | ✓   | –         | –   | –         | –   | –   | P                                                     |
+| organizations.create / update                     | ✓   | ✓   | –         | –   | –         | –   | –   | P (V: quem cria organizações?)                        |
+| organizations.update.own                          | –   | –   | ✓         | –   | ✓         | –   | –   | P                                                     |
+| members.manage (vínculos e papéis na própria org) | ✓   | ✓   | ✓         | –   | ✓         | –   | –   | C parcial (US-16 AE solicita cadastro; CLAUDE.md)     |
+| roles.manage / permissions.manage                 | ✓   | ✓   | –         | –   | –         | –   | –   | P (V: AE cria papéis personalizados?)                 |
+| plans.manage                                      | ✓   | ✓   | –         | –   | –         | –   | –   | C (US-15)                                             |
+| plans.view                                        | ✓   | ✓   | ✓         | ✓   | ✓         | ✓   | ✓   | C                                                     |
+| feature-flags.manage                              | ✓   | ✓   | –         | –   | –         | –   | –   | P                                                     |
+| audit.view                                        | ✓   | ✓   | –         | –   | –         | –   | –   | P                                                     |
+| notifications.view.own                            | ✓   | ✓   | ✓         | ✓   | ✓         | ✓   | ✓   | P                                                     |
+| onboarding.complete.own                           | ✓   | ✓   | ✓         | ✓   | ✓         | ✓   | ✓   | C (GP US-03)                                          |
+| dashboard.view                                    | ✓   | ✓   | ✓         | ✓   | ✓         | ✓   | ✓*  | C (painéis por perfil; *UC limitado — V)              |
 
 ## Futuras (previstas, não implementadas — todas V quanto ao detalhe)
 
@@ -40,6 +40,8 @@ Escopo: permissões de AE/UE valem apenas na organização (espaço) do vínculo
 - Projetos: `maturity.answer` líder da startup (C RN-01); `workplans.manage` AE/UE (C US-11..13); `progress.view` AS/US (C).
 - Tendências: `bi.manage` AH (C US-01..05); `reports.create` AH/AE (C); `reports.approve` AH (C RN-03); `reports.buy` todos (C US-12).
 - Conexões/mentorias/agenda: AE/UE/AS/US (C US-17..24, US-30..32).
+
+> Etapa 1.7: solicitações institucionais públicas (`/cadastro/startup`, `/cadastro/espaco-inovacao`) exigem apenas **autenticação** (qualquer usuário logado pode enviar); não requerem permissão específica. `/app/minhas-solicitacoes` é escopado ao próprio usuário (sem permissão). A análise (aprovar/reprovar) permanece restrita a `registrations.approve`/`registrations.reject` (ADM_HUB/SUPER_ADMIN).
 
 > Implementação (Etapa 1.4): SUPER_ADMIN recebe todas as permissões em qualquer escopo; papéis de vínculos em organização tipo HUB (ADM_HUB) têm escopo global para suas permissões; os demais valem apenas na organização do vínculo. Código: `src/modules/permissions/services/authorization.ts`.
 
