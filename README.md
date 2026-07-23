@@ -80,7 +80,9 @@ docker compose up -d       # banco precisa estar de pé
 npm run test:e2e
 ```
 
-O global-setup recria o banco **dedicado** `hub_digital_e2e` no mesmo container (drop/create via psql + `prisma migrate deploy` + seed) e sobe `next start` na porta 3100 com `DATABASE_URL` própria — o banco de desenvolvimento nunca é tocado. Para apontar outro banco de teste, defina `E2E_DATABASE_URL` (adicione também ao seu `.env.example`/`.env` se desejar fixá-la).
+O global-setup recria o banco **dedicado** `hub_digital_e2e` no mesmo container (drop/create via psql + `prisma migrate deploy` + seed) e sobe `next start` na porta 3100 (IPv4, `127.0.0.1`) com `DATABASE_URL` própria — o banco de desenvolvimento nunca é tocado. Cada cenário de cadastro cria o próprio registro isolado (`e2e/fixtures.ts` via `pg`) e limpa depois. Para apontar outro banco de teste, defina `E2E_DATABASE_URL` (adicione também ao seu `.env.example`/`.env` se desejar fixá-la).
+
+> **Nota (Windows):** o runtime de produção do Next 16 pode travar a resposta de Server Actions com `revalidatePath` por ~20–30s de forma intermitente quando o antivírus varre as escritas em `.next`. Isso deixa a suíte E2E instável **apenas nesta condição de ambiente** (não é bug do código — ver `docs/decisoes-tecnicas.md`). Para uma execução confiável, exclua a pasta `.next` da varredura em tempo real do Windows Defender **ou** rode a suíte em CI/Linux.
 
 ## Credenciais de desenvolvimento (somente local — nunca usar em produção)
 

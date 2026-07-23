@@ -24,28 +24,37 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
-  // Server Actions que chamam `revalidatePath("/app", "layout")` reconstroem o
-  // layout inteiro e, no build de produção sob carga da suíte, passam dos 5s
-  // padrão. Aumentar o teto do expect não enfraquece nenhuma asserção — só
-  // evita falha por tempo em máquina lenta.
-  expect: { timeout: 15_000 },
+  // As Server Actions de decisão persistem no banco de forma rápida, mas a
+  // RESPOSTA inclui o re-render do RSC revalidado (`revalidatePath` da rota
+  // atual). Sob a carga acumulada da suíte, nesta máquina de desenvolvimento,
+  // esse re-render passa dos 15s ocasionalmente — a operação SEMPRE conclui
+  // (o registro fica no estado esperado), só o sinal de UI chega tarde. O teto
+  // maior calibra o expect ao ambiente sem enfraquecer nenhuma asserção. Em CI
+  // com recursos adequados o valor menor é suficiente.
+  expect: { timeout: 30_000 },
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    // 127.0.0.1 (não "localhost"): no Windows, "localhost" pode resolver para
+    // ::1 (IPv6) primeiro; um SYN a uma porta sem listener IPv6 pode ser
+    // descartado silenciosamente pelo firewall e só falhar por timeout (~30s),
+    // travando ocasionalmente a resposta de uma Server Action. Fixar IPv4
+    // remove essa fonte de stall intermitente.
+    baseURL: `http://127.0.0.1:${PORT}`,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run start -- --port 3100",
-    url: `http://localhost:${PORT}`,
+    command: `npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
+    url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      // Pool maior e espera mais longa: o servidor único atende a suíte
-      // inteira e, com o pool padrão, transações mais pesadas (aprovação de
-      // cadastro) ficavam presas esperando conexão sob carga acumulada.
-      DATABASE_URL: `${E2E_DATABASE_URL}${E2E_DATABASE_URL.includes("?") ? "&" : "?"}connection_limit=25&pool_timeout=30`,
+      DATABASE_URL: E2E_DATABASE_URL,
+      // O servidor único atende a suíte inteira. Com o driver adapter (pg), o
+      // pool é dimensionado por DB_POOL_MAX (ver src/lib/prisma.ts) — os
+      // parâmetros `connection_limit`/`pool_timeout` da URL são ignorados.
+      DB_POOL_MAX: "30",
       AUTH_SECRET: "e2e-only-secret",
-      AUTH_URL: `http://localhost:${PORT}`,
+      AUTH_URL: `http://127.0.0.1:${PORT}`,
       AUTH_TRUST_HOST: "true",
       // Toda a suíte vem de 127.0.0.1, então o teto por IP (10/min em
       // produção) seria estourado pelo conjunto dos testes e provocaria

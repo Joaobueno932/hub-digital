@@ -4,7 +4,9 @@ import { requireAnyGlobalPermission, hasGlobalPermission } from "@/lib/authz";
 
 export const metadata: Metadata = { title: "Administração" };
 
-export const ADMIN_PERMISSIONS = [
+// Não exportar de um arquivo de página (o type-check do build webpack rejeita
+// exports que não sejam os do contrato de página).
+const ADMIN_PERMISSIONS = [
   "users.list",
   "organizations.list",
   "registrations.list",

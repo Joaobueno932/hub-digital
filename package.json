@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "test:e2e": "next build && playwright test"
+    "test:e2e": "next build --webpack && playwright test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -39,6 +39,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.3",
